@@ -1,0 +1,28 @@
+{
+  "name": "TableRush",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "TableRush": {
+        "$path": "src/ReplicatedStorage/TableRush"
+      }
+    },
+    "ServerScriptService": {
+      "TableRush": {
+        "$path": "src/ServerScriptService/TableRush"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "TableRushClient": {
+          "$path": "src/StarterPlayer/StarterPlayerScripts"
+        }
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
+  }
+}
