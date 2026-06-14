@@ -440,3 +440,50 @@ Likely next steps:
 - Room layouts are theme-aware instead of arbitrary angled clutter
 - Added simple orthogonal corridors between connected revealed/clickable rooms
 - Props vary by room theme while staying cube/rectangle based
+
+
+### v0.6.0 — Correct Connected Room Movement
+
+- Room movement is rebuilt from actual orthogonal grid adjacency
+- Diagonal-looking rooms are no longer treated as connected
+- Middle rooms now correctly connect up/down/left/right when visually adjacent
+- Every room layout is normalized into a fluent connected dungeon grid before movement is calculated
+- Corridor/floor chunks use theme-fit colors and smoother materials instead of ugly gray stone slabs
+
+
+### v0.6.1 — Theme Consistent Props and Visible Corridor Previews
+
+- Props and floor chunks are tinted toward the active room theme
+- Random gray/blue stone-looking chunks are reduced
+- Corridors are now partially visible to undiscovered connected rooms
+- Revealed/clickable corridors stay stronger while undiscovered previews stay softer
+- Movement logic from v0.6.0 is unchanged
+
+
+### v0.6.2 — Text, Color, Room Spacing, and Solid Hallways
+
+- Room labels are smaller/staggered to reduce overlap
+- Player labels are smaller/higher so they do not cover room names as much
+- Removed harsh pale yellow/off-white room tile color
+- Tile colors are more tightly tied to the active room theme
+- Room tile max sizes are clamped smaller
+- Extra L/alcove/split pieces stay inside their own tile lane better
+- Room spacing increased slightly to reduce clipping between neighboring rooms
+- Route choice panel moved lower to avoid covering active map text
+- Real connected hallways now show solid at 0 transparency, including to undiscovered visible rooms
+
+
+### v0.6.3 — Inset Room Texture
+
+- Restores the layered room-within-room look inside tiles
+- Adds a slightly darker inset panel inside each room for better depth and texture
+- Keeps the current spacing, hallway, and movement behavior from v0.6.2
+
+
+### v0.6.4 — Ticker and Card Hover Polish
+
+- Turn/status ticker moved higher so it does not overlap the action cards
+- Action cards are grouped closer together
+- Hover growth is stronger
+- Hover scaling applies to the whole card including icon, body text, and tag
+- Hovered card rises above neighbors visually without reflowing the hand

@@ -393,7 +393,7 @@ local choicePanel = make("Frame", {
     BackgroundColor3 = Shell.Panel,
     BackgroundTransparency = 0.02,
     AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.fromScale(0.5, 0.52),
+    Position = UDim2.fromScale(0.5, 0.60),
     Size = UDim2.fromOffset(500, 170),
     Visible = false,
     ZIndex = 120,
@@ -912,14 +912,34 @@ local function renderDungeonBoard3D(fake)
         -- Room ambience is intentionally silent until curated loop assets are added.
 
         local function tileColor(tile, clickable)
-            if clickable then return glowColor end
-            if not tile.Revealed then return Color3.fromRGB(33, 42, 52) end
-            if tile.Kind == "Enemy" and not tile.Cleared then return Color3.fromRGB(120, 54, 56) end
-            if tile.Kind == "Treasure" then return Shell.Gold end
-            if tile.Kind == "Trap" then return Color3.fromRGB(120, 66, 56) end
-            if tile.Kind == "Discovery" then return Shell.Blue end
-            if tile.Kind == "Exit" then return Shell.Green end
-            return Color3.fromRGB(70, 78, 84)
+            local baseTheme = tableColor:Lerp(glowColor, 0.24)
+
+            if clickable then
+                return glowColor:Lerp(Color3.fromRGB(255, 255, 255), 0.14)
+            end
+            if not tile.Revealed then
+                return tableColor:Lerp(glowColor, 0.34)
+            end
+            if tile.Kind == "Enemy" and not tile.Cleared then
+                return Color3.fromRGB(170, 70, 84):Lerp(glowColor, 0.12)
+            end
+            if tile.Kind == "Trap" and not tile.Cleared then
+                return Color3.fromRGB(170, 68, 72):Lerp(tableColor, 0.18)
+            end
+            if tile.Kind == "Treasure" and not tile.Cleared then
+                return tableColor:Lerp(Color3.fromRGB(180, 134, 72), 0.30):Lerp(glowColor, 0.08)
+            end
+            if tile.Kind == "Discovery" and not tile.Cleared then
+                return tableColor:Lerp(glowColor, 0.42)
+            end
+            if tile.Kind == "Exit" then
+                return tableColor:Lerp(glowColor, 0.40)
+            end
+            if tile.Kind == "Start" then
+                return tableColor:Lerp(glowColor, 0.30)
+            end
+
+            return baseTheme
         end
 
         local clickableTileIds = {}
@@ -952,13 +972,23 @@ local function renderDungeonBoard3D(fake)
 
             addShapePart("Tile_" .. tile.Id .. "_Main", w, d, 0, 0, baseColor, material, 0)
 
+            -- Inset inner room panel: slightly darker, gives each tile a nicer layered room-within-room look.
+            local insetW = math.max(0.72, w - 0.34)
+            local insetD = math.max(0.54, d - 0.28)
+            local insetColor = baseColor:Lerp(tableColor, 0.18)
+            local inset = part(renderFolder, "Tile_" .. tile.Id .. "_Inset", Vector3.new(insetW, clickable and 0.08 or 0.06, insetD), base * CFrame.new(x, clickable and 0.27 or 0.205, z), insetColor, Enum.Material.SmoothPlastic)
+            inset.CFrame = inset.CFrame * CFrame.Angles(0, math.rad(orthoRot), 0)
+            inset.CanCollide = false
+            inset.Transparency = clickable and 0.02 or 0.04
+            table.insert(parts, inset)
+
             if shape == "lshape" then
-                addShapePart("Tile_" .. tile.Id .. "_L", math.max(0.82, w * 0.48), math.max(0.70, d * 0.64), (w * 0.28), (d * 0.34), baseColor:Lerp(Color3.new(1,1,1), 0.08), material, 0.02)
+                addShapePart("Tile_" .. tile.Id .. "_L", math.max(0.62, w * 0.36), math.max(0.50, d * 0.46), (w * 0.22), (d * 0.25), baseColor:Lerp(glowColor, 0.06), material, 0.02)
             elseif shape == "split" then
-                addShapePart("Tile_" .. tile.Id .. "_SplitA", math.max(0.78, w * 0.34), d * 0.90, -(w * 0.34), 0, baseColor:Lerp(Color3.new(0,0,0), 0.08), material, 0.04)
-                addShapePart("Tile_" .. tile.Id .. "_SplitB", math.max(0.78, w * 0.34), d * 0.90, (w * 0.34), 0, baseColor:Lerp(Color3.new(1,1,1), 0.06), material, 0.04)
+                addShapePart("Tile_" .. tile.Id .. "_SplitA", math.max(0.58, w * 0.26), d * 0.72, -(w * 0.27), 0, baseColor:Lerp(tableColor, 0.08), material, 0.04)
+                addShapePart("Tile_" .. tile.Id .. "_SplitB", math.max(0.58, w * 0.26), d * 0.72, (w * 0.27), 0, baseColor:Lerp(glowColor, 0.05), material, 0.04)
             elseif shape == "alcove" then
-                addShapePart("Tile_" .. tile.Id .. "_Alcove", w * 0.45, d * 0.55, 0, -(d * 0.43), baseColor:Lerp(Color3.new(1,1,1), 0.07), material, 0.03)
+                addShapePart("Tile_" .. tile.Id .. "_Alcove", w * 0.34, d * 0.42, 0, -(d * 0.31), baseColor:Lerp(glowColor, 0.06), material, 0.03)
             end
 
             return parts
@@ -991,8 +1021,32 @@ local function renderDungeonBoard3D(fake)
             return rots[((seed + slot) % #rots) + 1]
         end
 
+        local function themedPropColor(color, material)
+            local themeBase = tableColor:Lerp(glowColor, 0.30)
+
+            -- Keep intentional gameplay accents readable.
+            if material == Enum.Material.Neon then
+                return color:Lerp(glowColor, 0.18)
+            end
+            if color == Shell.Gold then
+                return color:Lerp(themeBase, 0.08)
+            end
+
+            local danger = Color3.fromRGB(215, 70, 60)
+            local redDistance = math.abs(color.R - danger.R) + math.abs(color.G - danger.G) + math.abs(color.B - danger.B)
+            if redDistance < 0.65 then
+                return color:Lerp(themeBase, 0.18)
+            end
+
+            -- Normal clutter/floor chunks are mostly theme-tinted so they do not look like random gray slabs.
+            return themeBase:Lerp(color, 0.10)
+        end
+
+
         local function safeDecorPart(tile, name, size, x, z, offset, color, material, y, slot)
-            local p = part(renderFolder, name, size, base * CFrame.new(x + offset.X, y or 0.72, z + offset.Z), color, material)
+            local finalMaterial = material or Enum.Material.SmoothPlastic
+            local finalColor = themedPropColor(color, finalMaterial)
+            local p = part(renderFolder, name, size, base * CFrame.new(x + offset.X, y or 0.72, z + offset.Z), finalColor, finalMaterial)
             p.CanCollide = false
             p.CFrame = p.CFrame * CFrame.Angles(0, math.rad(decorRotation(tile, slot or 1)), 0)
             return p
@@ -1013,10 +1067,10 @@ local function renderDungeonBoard3D(fake)
                 add(2, Vector3.new(0.16, 0.16, 0.16), Color3.fromRGB(164, 94, 232), Enum.Material.Neon, 1.12)
                 if count >= 2 then add(3, Vector3.new(0.52, 0.08, 0.24), Color3.fromRGB(38, 34, 42), Enum.Material.Slate, 0.65) end
             elseif profile == "mist_stones" then
-                add(1, Vector3.new(0.70, 0.07, 0.36), glowColor, Enum.Material.ForceField, 0.66)
-                if count >= 2 then add(2, Vector3.new(0.32, 0.18, 0.28), Color3.fromRGB(58, 62, 66), Enum.Material.Slate, 0.69) end
+                add(1, Vector3.new(0.70, 0.07, 0.36), tableColor:Lerp(glowColor, 0.40), Enum.Material.SmoothPlastic, 0.66)
+                if count >= 2 then add(2, Vector3.new(0.32, 0.18, 0.28), tableColor:Lerp(glowColor, 0.22), Enum.Material.SmoothPlastic, 0.69) end
             elseif profile == "web_crates" then
-                add(1, Vector3.new(0.72, 0.04, 0.72), Color3.fromRGB(170, 160, 190), Enum.Material.ForceField, 0.66)
+                add(1, Vector3.new(0.72, 0.04, 0.72), tableColor:Lerp(glowColor, 0.40), Enum.Material.SmoothPlastic, 0.66)
                 if count >= 2 then add(2, Vector3.new(0.42, 0.28, 0.36), Color3.fromRGB(68, 48, 36), Enum.Material.Wood, 0.74) end
             elseif profile == "spikes_plate" then
                 for s = 1, count do add(s, Vector3.new(0.14, 0.26, 0.14), Color3.fromRGB(215, 70, 60), Enum.Material.Metal, 0.80) end
@@ -1028,8 +1082,8 @@ local function renderDungeonBoard3D(fake)
                 add(1, Vector3.new(0.72, 0.10, 0.18), Color3.fromRGB(128, 128, 138), Enum.Material.Metal, 0.72)
                 if count >= 2 then add(2, Vector3.new(0.18, 0.46, 0.18), Color3.fromRGB(72, 72, 82), Enum.Material.Metal, 0.84) end
             elseif profile == "water_stones" then
-                add(1, Vector3.new(0.82, 0.05, 0.46), Color3.fromRGB(44, 112, 140), Enum.Material.Glass, 0.65)
-                if count >= 2 then add(2, Vector3.new(0.34, 0.16, 0.28), Color3.fromRGB(62, 66, 70), Enum.Material.Slate, 0.70) end
+                add(1, Vector3.new(0.82, 0.05, 0.46), tableColor:Lerp(glowColor, 0.36), Enum.Material.SmoothPlastic, 0.65)
+                if count >= 2 then add(2, Vector3.new(0.34, 0.16, 0.28), tableColor:Lerp(glowColor, 0.24), Enum.Material.SmoothPlastic, 0.70) end
             elseif profile == "mushroom_blocks" then
                 add(1, Vector3.new(0.22, 0.30, 0.22), Color3.fromRGB(82, 190, 92), Enum.Material.Grass, 0.80)
                 if count >= 2 then add(2, Vector3.new(0.34, 0.14, 0.34), Color3.fromRGB(46, 72, 46), Enum.Material.Grass, 0.68) end
@@ -1041,7 +1095,7 @@ local function renderDungeonBoard3D(fake)
                 if count >= 2 then add(2, Vector3.new(0.26, 0.12, 0.18), Color3.fromRGB(148, 144, 130), Enum.Material.Slate, 0.70) end
             elseif profile == "rune_stones" then
                 add(1, Vector3.new(0.58, 0.08, 0.58), glowColor, Enum.Material.Neon, 0.68)
-                if count >= 2 then add(2, Vector3.new(0.22, 0.34, 0.22), Color3.fromRGB(58, 54, 64), Enum.Material.Slate, 0.84) end
+                if count >= 2 then add(2, Vector3.new(0.22, 0.34, 0.22), tableColor:Lerp(glowColor, 0.28), Enum.Material.SmoothPlastic, 0.84) end
             elseif profile == "metal_crates" then
                 add(1, Vector3.new(0.52, 0.28, 0.38), Color3.fromRGB(98, 104, 112), Enum.Material.Metal, 0.74)
                 if count >= 2 then add(2, Vector3.new(0.66, 0.10, 0.20), Color3.fromRGB(148, 148, 158), Enum.Material.Metal, 0.74) end
@@ -1056,7 +1110,7 @@ local function renderDungeonBoard3D(fake)
                 add(1, Vector3.new(0.78, 0.05, 0.28), Color3.fromRGB(70, 58, 42), Enum.Material.WoodPlanks, 0.66)
                 if count >= 2 then add(2, Vector3.new(0.42, 0.08, 0.26), Color3.fromRGB(50, 42, 34), Enum.Material.Wood, 0.67) end
             else
-                for s = 1, count do add(s, (s == 1) and Vector3.new(0.28, 0.12, 0.34) or Vector3.new(0.36, 0.10, 0.20), Color3.fromRGB(52, 48, 46), Enum.Material.Slate, 0.66) end
+                for s = 1, count do add(s, (s == 1) and Vector3.new(0.28, 0.12, 0.34) or Vector3.new(0.36, 0.10, 0.20), tableColor:Lerp(glowColor, 0.18), Enum.Material.SmoothPlastic, 0.66) end
             end
         end
 
@@ -1066,12 +1120,20 @@ local function renderDungeonBoard3D(fake)
             tileById[t.Id] = t
         end
 
+        local function connectionAlpha(a, b)
+            if not a or not b then return nil end
+
+            -- Always preview real neighbor connections because hidden rooms are already visible.
+            -- Stronger when both sides are revealed, medium when one side is reachable/clickable,
+            -- softer when it is just an undiscovered hallway preview.
+            if a.Revealed and b.Revealed then return 0 end
+            if (a.Revealed and clickableTileIds[b.Id]) or (b.Revealed and clickableTileIds[a.Id]) then return 0 end
+            if a.Revealed or b.Revealed then return 0 end
+            return 0
+        end
+
         local function shouldShowConnection(a, b)
-            if not a or not b then return false end
-            if a.Revealed and b.Revealed then return true end
-            if a.Revealed and clickableTileIds[b.Id] then return true end
-            if b.Revealed and clickableTileIds[a.Id] then return true end
-            return false
+            return connectionAlpha(a, b) ~= nil
         end
 
         local drawnConnections = {}
@@ -1080,30 +1142,31 @@ local function renderDungeonBoard3D(fake)
                 local b = tileById[bid]
                 if b then
                     local key = tostring(a.Id) < tostring(b.Id) and (tostring(a.Id) .. "_" .. tostring(b.Id)) or (tostring(b.Id) .. "_" .. tostring(a.Id))
-                    if not drawnConnections[key] and shouldShowConnection(a, b) then
+                    local alpha = connectionAlpha(a, b)
+                    if not drawnConnections[key] and alpha ~= nil then
                         drawnConnections[key] = true
-                        local ax = (a.X or 0) * 2.8 - 4.2
-                        local az = (a.Y or 0) * 2.1
-                        local bx = (b.X or 0) * 2.8 - 4.2
-                        local bz = (b.Y or 0) * 2.1
-                        local corridorColor = tableColor:Lerp(glowColor, 0.18)
+                        local ax = (a.X or 0) * 2.95 - 4.45
+                        local az = (a.Y or 0) * 2.18
+                        local bx = (b.X or 0) * 2.95 - 4.45
+                        local bz = (b.Y or 0) * 2.18
+                        local corridorColor = tableColor:Lerp(glowColor, 0.52)
 
                         if math.abs(ax - bx) < 0.05 or math.abs(az - bz) < 0.05 then
                             local cx = (ax + bx) / 2
                             local cz = (az + bz) / 2
                             local sx = math.max(0.28, math.abs(ax - bx))
                             local sz = math.max(0.28, math.abs(az - bz))
-                            local c = part(renderFolder, "Corridor_" .. key, Vector3.new(sx + 0.32, 0.06, sz + 0.32), base * CFrame.new(cx, 0.16, cz), corridorColor, Enum.Material.Slate)
-                            c.Transparency = 0.28
+                            local c = part(renderFolder, "Corridor_" .. key, Vector3.new(sx + 0.36, 0.055, sz + 0.36), base * CFrame.new(cx, 0.16, cz), corridorColor, Enum.Material.SmoothPlastic)
+                            c.Transparency = 0
                             c.CanCollide = false
                         else
                             local midX = bx
                             local midZ = az
-                            local c1 = part(renderFolder, "CorridorA_" .. key, Vector3.new(math.max(0.28, math.abs(ax - midX)) + 0.32, 0.06, 0.30), base * CFrame.new((ax + midX) / 2, 0.16, az), corridorColor, Enum.Material.Slate)
-                            c1.Transparency = 0.30
+                            local c1 = part(renderFolder, "CorridorA_" .. key, Vector3.new(math.max(0.28, math.abs(ax - midX)) + 0.36, 0.055, 0.32), base * CFrame.new((ax + midX) / 2, 0.16, az), corridorColor, Enum.Material.SmoothPlastic)
+                            c1.Transparency = 0
                             c1.CanCollide = false
-                            local c2 = part(renderFolder, "CorridorB_" .. key, Vector3.new(0.30, 0.06, math.max(0.28, math.abs(az - bz)) + 0.32), base * CFrame.new(bx, 0.16, (az + bz) / 2), corridorColor, Enum.Material.Slate)
-                            c2.Transparency = 0.30
+                            local c2 = part(renderFolder, "CorridorB_" .. key, Vector3.new(0.32, 0.055, math.max(0.28, math.abs(az - bz)) + 0.36), base * CFrame.new(bx, 0.16, (az + bz) / 2), corridorColor, Enum.Material.SmoothPlastic)
+                            c2.Transparency = 0
                             c2.CanCollide = false
                         end
                     end
@@ -1112,19 +1175,23 @@ local function renderDungeonBoard3D(fake)
         end
 
         for _, tile in ipairs(fake.Board.Tiles) do
-            local x = (tile.X or 0) * 2.8 - 4.2
-            local z = (tile.Y or 0) * 2.1
+            local x = (tile.X or 0) * 2.95 - 4.45
+            local z = (tile.Y or 0) * 2.18
             local layout = tile.Layout or {}
-            local w = layout.W or 2.25
-            local d = layout.D or 1.55
+            local w = math.clamp(layout.W or 2.0, 1.35, 2.42)
+            local d = math.clamp(layout.D or 1.35, 0.95, 1.78)
             local rot = ((math.floor(((layout.Rot or 0) + 45) / 90) % 4) * 90)
             local clickable = clickableTileIds[tile.Id] == true
-            local material = clickable and Enum.Material.Neon or Enum.Material.Slate
+            local material = clickable and Enum.Material.Neon or Enum.Material.SmoothPlastic
 
             local baseColor = tileColor(tile, clickable)
             local tileParts = makeTileShapeParts(tile, x, z, clickable, baseColor, material, w, d, rot)
             local labelBase = tileParts[1]
-            billboard(labelBase, tile.Revealed and tile.Label or "?", UDim2.fromOffset(118, 32), Vector3.new(0, 0.55, 0), tile.Kind == "Treasure" and Shell.Ink or Shell.Text)
+            local labelText = tile.Revealed and tile.Label or "?"
+            local labelYOffset = tile.Revealed and (0.72 + (((tile.X or 0) + math.abs(tile.Y or 0)) % 2) * 0.18) or 0.58
+            local labelSize = tile.Revealed and UDim2.fromOffset(100, 26) or UDim2.fromOffset(44, 24)
+            local labelColor = tile.Kind == "Treasure" and Color3.fromRGB(255, 226, 150) or Shell.Text
+            billboard(labelBase, labelText, labelSize, Vector3.new(0, labelYOffset, 0), labelColor)
 
             if clickable then
                 markClickableOn(tileParts, "Tile", tile.Id)
@@ -1139,7 +1206,7 @@ local function renderDungeonBoard3D(fake)
                     ring:SetAttribute("TableRushClickId", tile.Id)
                 end
 
-                local pad = part(renderFolder, "TileClickPad_" .. tile.Id, Vector3.new(w + 0.75, 0.08, d + 0.75), base * CFrame.new(x, 0.56, z), glowColor, Enum.Material.ForceField)
+                local pad = part(renderFolder, "TileClickPad_" .. tile.Id, Vector3.new(w + 0.75, 0.08, d + 0.75), base * CFrame.new(x, 0.56, z), tableColor:Lerp(glowColor, 0.30), Enum.Material.SmoothPlastic)
                 pad.Transparency = 1
                 pad.CanCollide = false
                 pad.CFrame = pad.CFrame * CFrame.Angles(0, math.rad(rot), 0)
@@ -1149,15 +1216,15 @@ local function renderDungeonBoard3D(fake)
             end
 
             if fake.PlayerTile == tile.Id then
-                local token = part(renderFolder, "PlayerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x - 0.42, 0.62, z - 0.18), Shell.Blue, Enum.Material.SmoothPlastic)
+                local token = part(renderFolder, "PlayerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x - 0.30, 0.62, z - 0.14), Shell.Blue, Enum.Material.SmoothPlastic)
                 token.Shape = Enum.PartType.Ball
-                billboard(token, "P1", UDim2.fromOffset(54, 24), Vector3.new(0, 0.85, 0), Shell.Text)
+                billboard(token, "P1", UDim2.fromOffset(42, 20), Vector3.new(0, 1.02, 0), Shell.Text)
             end
 
             if fake.PartnerTile == tile.Id then
-                local token2 = part(renderFolder, "PartnerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x + 0.42, 0.62, z + 0.18), TeamPurple, Enum.Material.SmoothPlastic)
+                local token2 = part(renderFolder, "PartnerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x + 0.30, 0.62, z + 0.14), TeamPurple, Enum.Material.SmoothPlastic)
                 token2.Shape = Enum.PartType.Ball
-                billboard(token2, "P2", UDim2.fromOffset(54, 24), Vector3.new(0, 0.85, 0), Shell.Text)
+                billboard(token2, "P2", UDim2.fromOffset(42, 20), Vector3.new(0, 1.02, 0), Shell.Text)
             end
 
             if tile.Kind == "Enemy" and not tile.Cleared and tile.Revealed then
@@ -1183,7 +1250,7 @@ local function renderDungeonBoard3D(fake)
                     local off = decorOffset(tile, 2)
                     local marker = safeDecorPart(tile, "TileRune_" .. tile.Id, Vector3.new(0.52, 0.08, 0.52), x, z, off, glowColor, Enum.Material.Neon, 0.70, 2)
                     marker.Transparency = 0.24
-                    safeDecorPart(tile, "TileRunePost_" .. tile.Id, Vector3.new(0.14, 0.34, 0.14), x, z, off + Vector3.new(0.18, 0, 0.18), Color3.fromRGB(58, 54, 64), Enum.Material.Slate, 0.88, 3)
+                    safeDecorPart(tile, "TileRunePost_" .. tile.Id, Vector3.new(0.14, 0.34, 0.14), x, z, off + Vector3.new(0.18, 0, 0.18), tableColor:Lerp(glowColor, 0.28), Enum.Material.SmoothPlastic, 0.88, 3)
                 elseif tile.Kind == "Exit" and fake.Board.Theme == "Boss" then
                     -- End vault exception: final room can look special.
                     local off = Vector3.new(0, 0, d * 0.34)
@@ -1193,8 +1260,8 @@ local function renderDungeonBoard3D(fake)
 
 
             else
-                local fog = part(renderFolder, "TileFog_" .. tile.Id, Vector3.new(math.max(1.1, w * 0.62), 0.07, math.max(0.70, d * 0.55)), base * CFrame.new(x, 0.62, z), glowColor, Enum.Material.ForceField)
-                fog.Transparency = 0.84
+                local fog = part(renderFolder, "TileFog_" .. tile.Id, Vector3.new(math.max(1.1, w * 0.62), 0.07, math.max(0.70, d * 0.55)), base * CFrame.new(x, 0.62, z), tableColor:Lerp(glowColor, 0.30), Enum.Material.SmoothPlastic)
+                fog.Transparency = 0.58
                 fog.CanCollide = false
                 fog.CFrame = fog.CFrame * CFrame.Angles(0, math.rad(rot), 0)
             end
@@ -1818,7 +1885,7 @@ local function makeChoiceButton(option, order)
         BackgroundColor3 = Shell.Row2,
         Size = UDim2.fromOffset(132, 86),
         Font = F.Heading,
-        TextSize = 28,
+        TextSize = 24,
         TextColor3 = Shell.Text,
         Text = tostring(option.Icon or "◆"),
         LayoutOrder = order,
@@ -1833,7 +1900,7 @@ local function makeChoiceButton(option, order)
         Position = UDim2.new(0.5, 0, 1, -8),
         Size = UDim2.new(1, -12, 0, 24),
         Font = F.Heading,
-        TextSize = 13,
+        TextSize = 12,
         TextColor3 = Shell.Text,
         Text = tostring(option.Label or option.Id or ""),
         TextWrapped = true,
@@ -2119,7 +2186,7 @@ local function makeActionCard(action, order)
     -- Stable slot prevents neighboring cards/text from reflowing on hover.
     local slot = make("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.fromOffset(w + 14, h + 14),
+        Size = UDim2.fromOffset(w + 4, h + 8),
         LayoutOrder = order,
         ZIndex = 35,
     }, actionScroll)
@@ -2137,7 +2204,7 @@ local function makeActionCard(action, order)
     round(card, 16)
 
     local cardStroke = stroke(card, 2, roomSpent and Color3.fromRGB(90, 84, 72) or (state.selectedAction == action.Key and Shell.Gold or Color3.fromRGB(118, 90, 54)), roomSpent and 0.35 or (state.selectedAction == action.Key and 0 or 0.18))
-    local cardScale = make("UIScale", {Scale = state.selectedAction == action.Key and 1.02 or 1}, card)
+    local cardScale = make("UIScale", {Scale = state.selectedAction == action.Key and 1.045 or 1}, card)
 
     local content = make("Frame", {
         BackgroundTransparency = 1,
@@ -2199,7 +2266,9 @@ local function makeActionCard(action, order)
 
     card.MouseEnter:Connect(function()
         if not mobile then
-            TweenService:Create(cardScale, TweenInfo.new(0.12), {Scale = 1.035}):Play()
+            card.ZIndex = 45
+            content.ZIndex = 46
+            TweenService:Create(cardScale, TweenInfo.new(0.12), {Scale = 1.105}):Play()
             if cardStroke then
                 TweenService:Create(cardStroke, TweenInfo.new(0.12), {Transparency = 0.02, Color = roomSpent and Color3.fromRGB(90, 84, 72) or Shell.Gold}):Play()
             end
@@ -2208,7 +2277,9 @@ local function makeActionCard(action, order)
 
     card.MouseLeave:Connect(function()
         if not mobile then
-            TweenService:Create(cardScale, TweenInfo.new(0.12), {Scale = state.selectedAction == action.Key and 1.02 or 1}):Play()
+            card.ZIndex = 36
+            content.ZIndex = 37
+            TweenService:Create(cardScale, TweenInfo.new(0.12), {Scale = state.selectedAction == action.Key and 1.045 or 1}):Play()
             if cardStroke then
                 TweenService:Create(cardStroke, TweenInfo.new(0.12), {
                     Transparency = roomSpent and 0.35 or (state.selectedAction == action.Key and 0 or 0.18),
@@ -2289,13 +2360,13 @@ local function renderLayout()
         dailyTitle.TextSize = 18
         dailySubtitle.TextSize = 11
 
-        actionLayer.Size = UDim2.fromOffset(math.min(v.X - 20, 740), 236)
+        actionLayer.Size = UDim2.fromOffset(math.min(v.X - 20, 700), 236)
         actionLayer.Position = UDim2.new(0.5, 0, 1, -78)
-        actionLayout.Padding = UDim.new(0, 10)
+        actionLayout.Padding = UDim.new(0, 4)
         actionScroll.ScrollBarThickness = 3
 
         ticker.Size = UDim2.fromOffset(math.min(v.X - 24, 460), 34)
-        ticker.Position = UDim2.new(0.5, 0, 1, -242)
+        ticker.Position = UDim2.new(0.5, 0, 1, -292)
         ticker.TextSize = 12
     elseif mode == "Compact" then
         topBar.Size = UDim2.fromOffset(math.min(v.X - 40, 600), 44)
@@ -2314,9 +2385,9 @@ local function renderLayout()
         dailyTitle.TextSize = 18
         dailySubtitle.TextSize = 11
 
-        actionLayer.Size = UDim2.fromOffset(math.min(v.X - 34, 880), 244)
+        actionLayer.Size = UDim2.fromOffset(math.min(v.X - 34, 820), 244)
         actionLayer.Position = UDim2.new(0.5, 0, 1, -86)
-        actionLayout.Padding = UDim.new(0, 12)
+        actionLayout.Padding = UDim.new(0, 5)
 
         ticker.Size = UDim2.fromOffset(math.min(v.X - 34, 520), 36)
         ticker.Position = UDim2.new(0.5, 0, 1, -276)
@@ -2339,12 +2410,12 @@ local function renderLayout()
         dailyTitle.TextSize = 18
         dailySubtitle.TextSize = 11
 
-        actionLayer.Size = UDim2.fromOffset(900, 232)
+        actionLayer.Size = UDim2.fromOffset(850, 232)
         actionLayer.Position = UDim2.new(0.5, 0, 1, -72)
-        actionLayout.Padding = UDim.new(0, 12)
+        actionLayout.Padding = UDim.new(0, 5)
 
         ticker.Size = UDim2.fromOffset(620, 38)
-        ticker.Position = UDim2.new(0.5, 0, 1, -286)
+        ticker.Position = UDim2.new(0.5, 0, 1, -328)
         ticker.TextSize = 14
     end
 end

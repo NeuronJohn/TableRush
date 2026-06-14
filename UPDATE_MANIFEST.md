@@ -411,3 +411,80 @@ Exact changed files:
 - README.md
 - CHANGELOG.md
 - UPDATE_MANIFEST.md
+
+### v0.6.0 — Correct Connected Room Movement
+Patch over v0.5.9:
+- Normalizes each room map into a connected orthogonal grid.
+- Rebuilds tile neighbors from actual coordinates.
+- Prevents diagonal/non-connected movement.
+- Makes up/down/left/right movement match visible connected rooms.
+- Recolors/smooths corridor chunks to fit the active room theme.
+
+Exact changed files:
+- Constants.lua
+- Server.server.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.6.1 — Theme Consistent Props and Visible Corridor Previews
+Patch over v0.6.0:
+- Adds themed prop color tinting.
+- Reduces random off-theme gray/stone chunk colors.
+- Shows corridor previews to undiscovered connected rooms.
+- Keeps active/revealed corridors stronger and hidden previews softer.
+
+Exact changed files:
+- Constants.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.6.2 — Text, Color, Room Spacing, and Solid Hallways
+Patch over v0.6.1:
+- Reduces room label overlap.
+- Moves player labels up and shrinks them.
+- Removes harsh pale yellow/off-white tile color.
+- Ties tile colors closer to active room theme.
+- Shrinks max tile dimensions.
+- Shrinks sub-shape extra pieces.
+- Increases grid spacing slightly.
+- Moves route choice UI lower.
+- Makes all real connected corridors 0 transparency.
+
+Exact changed files:
+- Constants.lua
+- Server.server.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.6.3 — Inset Room Texture
+Patch over v0.6.2:
+- Restores the darker inset room-inside-room texture.
+- Keeps the existing spacing, solid hallways, and movement rules.
+
+Exact changed files:
+- Constants.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.6.4 — Ticker and Card Hover Polish
+Patch over v0.6.3:
+- Moves status/turn ticker higher.
+- Tightens action card spacing.
+- Increases hover growth.
+- Keeps card text/icons/tags scaling with the card.
+- Raises hovered card above neighbors without reflowing the hand.
+
+Exact changed files:
+- Constants.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md

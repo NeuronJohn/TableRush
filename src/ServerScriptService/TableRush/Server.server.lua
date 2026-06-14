@@ -173,13 +173,13 @@ local function roomShapeFor(tile, room)
     end
 
     local sizes = {
-        square={2.20,1.55},
-        wide={2.95,1.55},
-        tall={2.05,2.22},
-        thin={3.10,1.12},
-        split={2.55,1.82},
-        alcove={3.00,1.62},
-        lshape={2.55,1.95},
+        square={1.96,1.36},
+        wide={2.34,1.32},
+        tall={1.78,1.76},
+        thin={2.42,1.02},
+        split={2.10,1.46},
+        alcove={2.28,1.34},
+        lshape={2.06,1.54},
     }
     local s = sizes[shape] or sizes.square
 
@@ -218,9 +218,83 @@ local function roomShapeFor(tile, room)
     }
 end
 
+
+local function normalizeRoomGrid(tiles, room)
+    local count = #tiles
+    local theme = room.Theme or "Room"
+    local shapeIndex = ((room.Difficulty or 1) + #(room.Name or "")) % 4
+
+    local patterns = {
+        {
+            {0,0},{1,0},{2,0},{3,0},{2,-1},{2,1},{4,0}
+        },
+        {
+            {0,0},{1,0},{2,0},{2,-1},{2,1},{3,0},{4,0}
+        },
+        {
+            {0,0},{1,0},{1,-1},{2,-1},{2,0},{2,1},{3,0}
+        },
+        {
+            {0,0},{0,-1},{1,-1},{1,0},{2,0},{2,1},{3,1}
+        },
+    }
+
+    if theme == "Trap" or theme == "Ambush" or theme == "Fear" then
+        shapeIndex = ((shapeIndex + 1) % 4)
+    elseif theme == "Greed" or theme == "Treasure" or theme == "Secret" then
+        shapeIndex = ((shapeIndex + 2) % 4)
+    end
+
+    local pattern = patterns[shapeIndex + 1]
+
+    for i, tile in ipairs(tiles) do
+        local p = pattern[math.min(i, #pattern)]
+        tile.X = p[1]
+        tile.Y = p[2]
+    end
+
+    -- Make the exit land at the furthest right available coordinate so it reads as the route endpoint.
+    local exitIndex = nil
+    for i, tile in ipairs(tiles) do
+        if tile.Kind == "Exit" then
+            exitIndex = i
+            break
+        end
+    end
+    if exitIndex and exitIndex ~= #tiles then
+        local exitTile = tiles[exitIndex]
+        local lastTile = tiles[#tiles]
+        exitTile.X, lastTile.X = lastTile.X, exitTile.X
+        exitTile.Y, lastTile.Y = lastTile.Y, exitTile.Y
+    end
+end
+
+local function rebuildOrthogonalNeighbors(tiles)
+    for _, tile in ipairs(tiles) do
+        tile.Neighbors = {}
+    end
+
+    for i, a in ipairs(tiles) do
+        for j = i + 1, #tiles do
+            local b = tiles[j]
+            local dx = math.abs((a.X or 0) - (b.X or 0))
+            local dy = math.abs((a.Y or 0) - (b.Y or 0))
+
+            if (dx + dy) == 1 then
+                table.insert(a.Neighbors, b.Id)
+                table.insert(b.Neighbors, a.Id)
+            end
+        end
+    end
+end
+
 local function makeRoomState(state, roomIndex, entryDoor)
     local t = roomIndex==1 and ROOM_TEMPLATES[1] or pickRoomTemplate(state, entryDoor)
     local tiles=deepCopy(t.Tiles)
+
+    normalizeRoomGrid(tiles, t)
+    rebuildOrthogonalNeighbors(tiles)
+
     for _,tile in ipairs(tiles) do
         tile.Revealed = tile.Id=="start"
         tile.Cleared = tile.Kind=="Start"

@@ -1108,3 +1108,147 @@ Redo the table room visuals so the room maps feel more deliberate, fluent, and t
 - `README.md`
 - `CHANGELOG.md`
 - `UPDATE_MANIFEST.md`
+
+## v0.6.0 — Correct Connected Room Movement
+
+### Purpose
+Fix the mismatch between what the table visually shows and what movement allows. Diagonal-looking rooms were being treated as connected because old template neighbor data was still being used.
+
+### Movement changes
+- Added server-side room layout normalization.
+- Added server-side orthogonal neighbor rebuilding.
+- Movement is now based on adjacent grid positions only:
+  - left
+  - right
+  - up
+  - down
+- Diagonal tiles are not valid moves.
+- A fork only connects to the room physically adjacent to it.
+- A center room correctly connects to the up/down/right/left rooms around it when they are physically adjacent.
+- Monster run-away movement still respects revealed-only retreat rules.
+
+### Visual cleanup
+- Cleaned up gray/stone-looking corridor chunks.
+- Corridors now use smoother materials.
+- Corridor/floor colors now lerp toward the current room theme/glow color.
+- Hidden fog slabs are less chunky and less stone-textured.
+- Tile sub-shapes use more consistent theme-fit colors.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/ServerScriptService/TableRush/Server.server.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.6.1 — Theme Consistent Props and Visible Corridor Previews
+
+### Purpose
+Clean up off-theme prop colors and make hallway connections visible before a room is opened.
+
+### Visual color cleanup
+- Added theme-tinting for normal prop/decor parts.
+- Random gray/blue/stone chunks are pulled toward the active room color/glow.
+- Gold treasure accents remain gold.
+- Danger/red accents remain readable.
+- Hidden fog slabs are softer and less chunky.
+- Tile sub-shape contrast is reduced so rooms feel more cohesive.
+
+### Corridor visibility
+- Corridors are now visible for all real neighbor connections.
+- Revealed-to-revealed corridors are strongest.
+- Revealed-to-clickable corridors are medium.
+- Revealed-to-hidden corridors are softer previews.
+- Hidden-to-hidden corridors are very soft, but still help the map read as connected.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.6.2 — Text, Color, Room Spacing, and Solid Hallways
+
+### Purpose
+Fix label overlap, remove ugly off-theme pale yellow slabs, reduce room clipping, and make known hallways solid instead of faint.
+
+### Text/layout fixes
+- Room labels are smaller.
+- Hidden `?` labels use a smaller footprint.
+- Revealed labels are staggered vertically to reduce overlap.
+- P1/P2 labels are smaller and lifted above the tokens.
+- Player tokens are pulled closer to room center.
+- Route choice panel is moved lower so it covers less map text.
+- Route choice button text remains readable but less dominant.
+
+### Color fixes
+- Replaced harsh pale yellow/off-white tile coloring.
+- Start/Exit/safe tiles now use theme-tinted colors.
+- Treasure tiles keep a warm accent without turning the room into a pale yellow slab.
+- Normal prop chunks are pulled harder toward the active room theme color.
+
+### Room clipping fixes
+- Server tile layout max sizes reduced.
+- Client clamps old tile layout dimensions defensively.
+- L-shape, split, and alcove extra pieces are smaller.
+- Room spacing increased slightly.
+- Corridors use matching updated spacing.
+
+### Hallway visibility
+- Real connected hallways are now fully visible with 0 transparency.
+- Hallways to undiscovered visible rooms are solid too.
+- Corridor colors are stronger but still tied to the room theme/glow.
+- Movement validity is still controlled by the server; visible halls do not bypass movement rules.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/ServerScriptService/TableRush/Server.server.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.6.3 — Inset Room Texture
+
+### Purpose
+Bring back the more appealing layered room look from the earlier approach by adding a slightly darker inner room panel inside each tile.
+
+### Visual changes
+- Added an inset inner panel inside each room tile.
+- The inset is slightly darker than the outer room color.
+- The inset rotates with the room tile and stays inside the tile bounds.
+- Clickable/active rooms keep the same inset treatment without changing movement rules.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.6.4 — Ticker and Card Hover Polish
+
+### Purpose
+Fix the status/turn ticker overlapping the action cards and make card hover feel better.
+
+### Ticker changes
+- Moved the turn/status ticker higher above the action hand.
+- Adjusted multiple responsive layout positions so it stays clear of cards.
+
+### Card spacing and hover changes
+- Reduced stable slot gutter width.
+- Reduced action card list padding.
+- Cards now sit closer together.
+- Hover scale increased to make cards feel more responsive.
+- Selected card scale increased slightly.
+- Hover uses `UIScale` on the whole card, so text/icons/tags scale together.
+- Hovered card raises its ZIndex so the zoom is visible without forcing hand reflow.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
