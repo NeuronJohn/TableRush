@@ -394,7 +394,7 @@ local choicePanel = make("Frame", {
     BackgroundTransparency = 0.02,
     AnchorPoint = Vector2.new(0.5, 0.5),
     Position = UDim2.fromScale(0.5, 0.52),
-    Size = UDim2.fromOffset(420, 150),
+    Size = UDim2.fromOffset(500, 170),
     Visible = false,
     ZIndex = 120,
 }, root)
@@ -415,7 +415,7 @@ local choiceTitle = make("TextLabel", {
 local choiceRow = make("Frame", {
     BackgroundTransparency = 1,
     Position = UDim2.fromOffset(0, 38),
-    Size = UDim2.new(1, 0, 1, -40),
+    Size = UDim2.new(1, 0, 1, -42),
     ZIndex = 121,
 }, choicePanel)
 local choiceLayout = make("UIListLayout", {
@@ -575,7 +575,7 @@ local routeRollPanel = make("Frame", {
     BackgroundTransparency = 0.04,
     AnchorPoint = Vector2.new(0.5, 0.5),
     Position = UDim2.fromScale(0.5, 0.5),
-    Size = UDim2.fromOffset(330, 258),
+    Size = UDim2.fromOffset(360, 300),
     Visible = false,
     ZIndex = 190,
 }, root)
@@ -607,7 +607,7 @@ local routeRollSubtitle = make("TextLabel", {
 local routeWheel = make("Frame", {
     BackgroundColor3 = Shell.Text,
     AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.new(0.5, 0, 0.56, 0),
+    Position = UDim2.new(0.5, 0, 0.50, 0),
     Size = UDim2.fromOffset(136, 136),
     Rotation = 0,
     ZIndex = 191,
@@ -640,8 +640,8 @@ local routeNeedle = make("TextLabel", {
 local routeRollText = make("TextLabel", {
     BackgroundTransparency = 1,
     AnchorPoint = Vector2.new(0.5, 1),
-    Position = UDim2.new(0.5, 0, 1, -8),
-    Size = UDim2.new(1, -26, 0, 40),
+    Position = UDim2.new(0.5, 0, 1, -16),
+    Size = UDim2.new(1, -30, 0, 46),
     Font = F.Heading,
     TextSize = 12,
     TextColor3 = Shell.Muted,
@@ -936,30 +936,213 @@ local function renderDungeonBoard3D(fake)
             end
         end
 
+        local function makeTileShapeParts(tile, x, z, clickable, baseColor, material, w, d, rot)
+            local shape = tile.Layout and tile.Layout.Shape or "square"
+            local parts = {}
+            local orthoRot = ((math.floor(((rot or 0) + 45) / 90) % 4) * 90)
+
+            local function addShapePart(name, sx, sz, ox, oz, color, partMaterial, trans)
+                local p = part(renderFolder, name, Vector3.new(sx, clickable and 0.24 or 0.17, sz), base * CFrame.new(x + ox, 0.22, z + oz), color, partMaterial)
+                p.CFrame = p.CFrame * CFrame.Angles(0, math.rad(orthoRot), 0)
+                p.CanCollide = false
+                p.Transparency = trans or 0
+                table.insert(parts, p)
+                return p
+            end
+
+            addShapePart("Tile_" .. tile.Id .. "_Main", w, d, 0, 0, baseColor, material, 0)
+
+            if shape == "lshape" then
+                addShapePart("Tile_" .. tile.Id .. "_L", math.max(0.82, w * 0.48), math.max(0.70, d * 0.64), (w * 0.28), (d * 0.34), baseColor:Lerp(Color3.new(1,1,1), 0.08), material, 0.02)
+            elseif shape == "split" then
+                addShapePart("Tile_" .. tile.Id .. "_SplitA", math.max(0.78, w * 0.34), d * 0.90, -(w * 0.34), 0, baseColor:Lerp(Color3.new(0,0,0), 0.08), material, 0.04)
+                addShapePart("Tile_" .. tile.Id .. "_SplitB", math.max(0.78, w * 0.34), d * 0.90, (w * 0.34), 0, baseColor:Lerp(Color3.new(1,1,1), 0.06), material, 0.04)
+            elseif shape == "alcove" then
+                addShapePart("Tile_" .. tile.Id .. "_Alcove", w * 0.45, d * 0.55, 0, -(d * 0.43), baseColor:Lerp(Color3.new(1,1,1), 0.07), material, 0.03)
+            end
+
+            return parts
+        end
+
+        local function markClickableOn(parts, kind, id)
+            for _, p in ipairs(parts) do
+                p:SetAttribute("TableRushClickable", true)
+                p:SetAttribute("TableRushClickKind", kind)
+                p:SetAttribute("TableRushClickId", id)
+            end
+        end
+
+        local function decorOffset(tile, slot)
+            local seed = tile.Layout and tile.Layout.DecorSeed or 0
+            local positions = {
+                Vector3.new(0.76, 0, 0.50),
+                Vector3.new(-0.76, 0, 0.50),
+                Vector3.new(0.76, 0, -0.50),
+                Vector3.new(-0.76, 0, -0.50),
+                Vector3.new(0, 0, 0.68),
+                Vector3.new(0, 0, -0.68),
+            }
+            return positions[((seed + slot) % #positions) + 1]
+        end
+
+        local function decorRotation(tile, slot)
+            local seed = tile.Layout and tile.Layout.DecorSeed or 0
+            local rots = {0, 90, 180, 270}
+            return rots[((seed + slot) % #rots) + 1]
+        end
+
+        local function safeDecorPart(tile, name, size, x, z, offset, color, material, y, slot)
+            local p = part(renderFolder, name, size, base * CFrame.new(x + offset.X, y or 0.72, z + offset.Z), color, material)
+            p.CanCollide = false
+            p.CFrame = p.CFrame * CFrame.Angles(0, math.rad(decorRotation(tile, slot or 1)), 0)
+            return p
+        end
+
+        local function addProfileDecor(tile, x, z, w, d, glowColor)
+            if not tile.Revealed then return end
+            local profile = tile.Layout and tile.Layout.DecorProfile or "stone_clutter"
+            local seed = tile.Layout and tile.Layout.DecorSeed or 0
+            local count = 1 + (seed % 3)
+
+            local function add(slot, size, color, material, y)
+                safeDecorPart(tile, "TileProfile_" .. tile.Id .. "_" .. tostring(slot), size, x, z, decorOffset(tile, slot), color, material, y or 0.66, slot)
+            end
+
+            if profile == "candle_ruin" then
+                add(1, Vector3.new(0.16, 0.42, 0.16), Color3.fromRGB(34, 29, 42), Enum.Material.Slate, 0.86)
+                add(2, Vector3.new(0.16, 0.16, 0.16), Color3.fromRGB(164, 94, 232), Enum.Material.Neon, 1.12)
+                if count >= 2 then add(3, Vector3.new(0.52, 0.08, 0.24), Color3.fromRGB(38, 34, 42), Enum.Material.Slate, 0.65) end
+            elseif profile == "mist_stones" then
+                add(1, Vector3.new(0.70, 0.07, 0.36), glowColor, Enum.Material.ForceField, 0.66)
+                if count >= 2 then add(2, Vector3.new(0.32, 0.18, 0.28), Color3.fromRGB(58, 62, 66), Enum.Material.Slate, 0.69) end
+            elseif profile == "web_crates" then
+                add(1, Vector3.new(0.72, 0.04, 0.72), Color3.fromRGB(170, 160, 190), Enum.Material.ForceField, 0.66)
+                if count >= 2 then add(2, Vector3.new(0.42, 0.28, 0.36), Color3.fromRGB(68, 48, 36), Enum.Material.Wood, 0.74) end
+            elseif profile == "spikes_plate" then
+                for s = 1, count do add(s, Vector3.new(0.14, 0.26, 0.14), Color3.fromRGB(215, 70, 60), Enum.Material.Metal, 0.80) end
+            elseif profile == "coin_crates" then
+                add(1, Vector3.new(0.40, 0.08, 0.40), Shell.Gold, Enum.Material.Metal, 0.68)
+                if count >= 2 then add(2, Vector3.new(0.48, 0.30, 0.40), Color3.fromRGB(86, 52, 30), Enum.Material.Wood, 0.75) end
+                if count >= 3 then add(3, Vector3.new(0.24, 0.06, 0.24), Shell.Gold, Enum.Material.Metal, 0.70) end
+            elseif profile == "chain_blocks" then
+                add(1, Vector3.new(0.72, 0.10, 0.18), Color3.fromRGB(128, 128, 138), Enum.Material.Metal, 0.72)
+                if count >= 2 then add(2, Vector3.new(0.18, 0.46, 0.18), Color3.fromRGB(72, 72, 82), Enum.Material.Metal, 0.84) end
+            elseif profile == "water_stones" then
+                add(1, Vector3.new(0.82, 0.05, 0.46), Color3.fromRGB(44, 112, 140), Enum.Material.Glass, 0.65)
+                if count >= 2 then add(2, Vector3.new(0.34, 0.16, 0.28), Color3.fromRGB(62, 66, 70), Enum.Material.Slate, 0.70) end
+            elseif profile == "mushroom_blocks" then
+                add(1, Vector3.new(0.22, 0.30, 0.22), Color3.fromRGB(82, 190, 92), Enum.Material.Grass, 0.80)
+                if count >= 2 then add(2, Vector3.new(0.34, 0.14, 0.34), Color3.fromRGB(46, 72, 46), Enum.Material.Grass, 0.68) end
+            elseif profile == "ember_blocks" then
+                add(1, Vector3.new(0.62, 0.08, 0.36), Color3.fromRGB(235, 108, 54), Enum.Material.Neon, 0.66)
+                if count >= 2 then add(2, Vector3.new(0.32, 0.20, 0.28), Color3.fromRGB(68, 34, 22), Enum.Material.Basalt, 0.72) end
+            elseif profile == "bone_slabs" then
+                add(1, Vector3.new(0.58, 0.08, 0.18), Color3.fromRGB(190, 184, 166), Enum.Material.Slate, 0.68)
+                if count >= 2 then add(2, Vector3.new(0.26, 0.12, 0.18), Color3.fromRGB(148, 144, 130), Enum.Material.Slate, 0.70) end
+            elseif profile == "rune_stones" then
+                add(1, Vector3.new(0.58, 0.08, 0.58), glowColor, Enum.Material.Neon, 0.68)
+                if count >= 2 then add(2, Vector3.new(0.22, 0.34, 0.22), Color3.fromRGB(58, 54, 64), Enum.Material.Slate, 0.84) end
+            elseif profile == "metal_crates" then
+                add(1, Vector3.new(0.52, 0.28, 0.38), Color3.fromRGB(98, 104, 112), Enum.Material.Metal, 0.74)
+                if count >= 2 then add(2, Vector3.new(0.66, 0.10, 0.20), Color3.fromRGB(148, 148, 158), Enum.Material.Metal, 0.74) end
+            elseif profile == "vault_blocks" then
+                add(1, Vector3.new(0.70, 0.34, 0.26), Color3.fromRGB(82, 66, 60), Enum.Material.Granite, 0.78)
+                add(2, Vector3.new(0.62, 0.08, 0.32), Color3.fromRGB(215, 70, 60), Enum.Material.Neon, 0.96)
+                if count >= 3 then add(3, Vector3.new(0.24, 0.44, 0.24), Color3.fromRGB(46, 38, 40), Enum.Material.Metal, 0.86) end
+            elseif profile == "holy_cache" then
+                add(1, Vector3.new(0.56, 0.10, 0.56), Color3.fromRGB(245, 230, 170), Enum.Material.Neon, 0.68)
+                if count >= 2 then add(2, Vector3.new(0.34, 0.26, 0.34), Color3.fromRGB(92, 90, 72), Enum.Material.Marble, 0.76) end
+            elseif profile == "broken_floor" then
+                add(1, Vector3.new(0.78, 0.05, 0.28), Color3.fromRGB(70, 58, 42), Enum.Material.WoodPlanks, 0.66)
+                if count >= 2 then add(2, Vector3.new(0.42, 0.08, 0.26), Color3.fromRGB(50, 42, 34), Enum.Material.Wood, 0.67) end
+            else
+                for s = 1, count do add(s, (s == 1) and Vector3.new(0.28, 0.12, 0.34) or Vector3.new(0.36, 0.10, 0.20), Color3.fromRGB(52, 48, 46), Enum.Material.Slate, 0.66) end
+            end
+        end
+
+
+        local tileById = {}
+        for _, t in ipairs(fake.Board.Tiles) do
+            tileById[t.Id] = t
+        end
+
+        local function shouldShowConnection(a, b)
+            if not a or not b then return false end
+            if a.Revealed and b.Revealed then return true end
+            if a.Revealed and clickableTileIds[b.Id] then return true end
+            if b.Revealed and clickableTileIds[a.Id] then return true end
+            return false
+        end
+
+        local drawnConnections = {}
+        for _, a in ipairs(fake.Board.Tiles) do
+            for _, bid in ipairs(a.Neighbors or {}) do
+                local b = tileById[bid]
+                if b then
+                    local key = tostring(a.Id) < tostring(b.Id) and (tostring(a.Id) .. "_" .. tostring(b.Id)) or (tostring(b.Id) .. "_" .. tostring(a.Id))
+                    if not drawnConnections[key] and shouldShowConnection(a, b) then
+                        drawnConnections[key] = true
+                        local ax = (a.X or 0) * 2.8 - 4.2
+                        local az = (a.Y or 0) * 2.1
+                        local bx = (b.X or 0) * 2.8 - 4.2
+                        local bz = (b.Y or 0) * 2.1
+                        local corridorColor = tableColor:Lerp(glowColor, 0.18)
+
+                        if math.abs(ax - bx) < 0.05 or math.abs(az - bz) < 0.05 then
+                            local cx = (ax + bx) / 2
+                            local cz = (az + bz) / 2
+                            local sx = math.max(0.28, math.abs(ax - bx))
+                            local sz = math.max(0.28, math.abs(az - bz))
+                            local c = part(renderFolder, "Corridor_" .. key, Vector3.new(sx + 0.32, 0.06, sz + 0.32), base * CFrame.new(cx, 0.16, cz), corridorColor, Enum.Material.Slate)
+                            c.Transparency = 0.28
+                            c.CanCollide = false
+                        else
+                            local midX = bx
+                            local midZ = az
+                            local c1 = part(renderFolder, "CorridorA_" .. key, Vector3.new(math.max(0.28, math.abs(ax - midX)) + 0.32, 0.06, 0.30), base * CFrame.new((ax + midX) / 2, 0.16, az), corridorColor, Enum.Material.Slate)
+                            c1.Transparency = 0.30
+                            c1.CanCollide = false
+                            local c2 = part(renderFolder, "CorridorB_" .. key, Vector3.new(0.30, 0.06, math.max(0.28, math.abs(az - bz)) + 0.32), base * CFrame.new(bx, 0.16, (az + bz) / 2), corridorColor, Enum.Material.Slate)
+                            c2.Transparency = 0.30
+                            c2.CanCollide = false
+                        end
+                    end
+                end
+            end
+        end
+
         for _, tile in ipairs(fake.Board.Tiles) do
             local x = (tile.X or 0) * 2.8 - 4.2
             local z = (tile.Y or 0) * 2.1
+            local layout = tile.Layout or {}
+            local w = layout.W or 2.25
+            local d = layout.D or 1.55
+            local rot = ((math.floor(((layout.Rot or 0) + 45) / 90) % 4) * 90)
             local clickable = clickableTileIds[tile.Id] == true
-            local height = clickable and 0.26 or 0.18
-            local p = part(renderFolder, "Tile_" .. tile.Id, Vector3.new(2.25, height, 1.55), base * CFrame.new(x, 0.22, z), tileColor(tile, clickable), clickable and Enum.Material.Neon or Enum.Material.Slate)
-            p.CanCollide = false
-            billboard(p, tile.Revealed and tile.Label or "?", UDim2.fromOffset(118, 32), Vector3.new(0, 0.55, 0), tile.Kind == "Treasure" and Shell.Ink or Shell.Text)
+            local material = clickable and Enum.Material.Neon or Enum.Material.Slate
+
+            local baseColor = tileColor(tile, clickable)
+            local tileParts = makeTileShapeParts(tile, x, z, clickable, baseColor, material, w, d, rot)
+            local labelBase = tileParts[1]
+            billboard(labelBase, tile.Revealed and tile.Label or "?", UDim2.fromOffset(118, 32), Vector3.new(0, 0.55, 0), tile.Kind == "Treasure" and Shell.Ink or Shell.Text)
 
             if clickable then
-                p:SetAttribute("TableRushClickable", true)
-                p:SetAttribute("TableRushClickKind", "Tile")
-                p:SetAttribute("TableRushClickId", tile.Id)
+                markClickableOn(tileParts, "Tile", tile.Id)
 
-                local ring = part(renderFolder, "TileGlow_" .. tile.Id, Vector3.new(3.15, 0.12, 2.35), base * CFrame.new(x, 0.42, z), glowColor, Enum.Material.Neon)
-                ring.Transparency = 0.45
-                ring.CanCollide = false
-                ring:SetAttribute("TableRushClickable", true)
-                ring:SetAttribute("TableRushClickKind", "Tile")
-                ring:SetAttribute("TableRushClickId", tile.Id)
+                local ringParts = makeTileShapeParts(tile, x, z, true, glowColor, Enum.Material.Neon, w + 0.16, d + 0.16, rot)
+                for _, ring in ipairs(ringParts) do
+                    ring.Name = "TileGlow_" .. tile.Id
+                    ring.Transparency = 0.66
+                    ring.CanCollide = false
+                    ring:SetAttribute("TableRushClickable", true)
+                    ring:SetAttribute("TableRushClickKind", "Tile")
+                    ring:SetAttribute("TableRushClickId", tile.Id)
+                end
 
-                local pad = part(renderFolder, "TileClickPad_" .. tile.Id, Vector3.new(4.25, 0.08, 3.25), base * CFrame.new(x, 0.56, z), glowColor, Enum.Material.ForceField)
-                pad.Transparency = 0.72
+                local pad = part(renderFolder, "TileClickPad_" .. tile.Id, Vector3.new(w + 0.75, 0.08, d + 0.75), base * CFrame.new(x, 0.56, z), glowColor, Enum.Material.ForceField)
+                pad.Transparency = 1
                 pad.CanCollide = false
+                pad.CFrame = pad.CFrame * CFrame.Angles(0, math.rad(rot), 0)
                 pad:SetAttribute("TableRushClickable", true)
                 pad:SetAttribute("TableRushClickKind", "Tile")
                 pad:SetAttribute("TableRushClickId", tile.Id)
@@ -982,8 +1165,40 @@ local function renderDungeonBoard3D(fake)
                 enemy.Shape = Enum.PartType.Ball
                 billboard(enemy, tostring(tile.HP or 1) .. " HP", UDim2.fromOffset(72, 24), Vector3.new(0, 0.9, 0), Shell.Text)
             end
-        end
 
+            -- Decorations stay around edges/corners so they do not clip P1/P2 token positions.
+            if tile.Revealed then
+                addProfileDecor(tile, x, z, w, d, glowColor)
+
+                if tile.Kind == "Treasure" and not tile.Cleared then
+                    local off = decorOffset(tile, 1)
+                    safeDecorPart(tile, "TileChest_" .. tile.Id, Vector3.new(0.54, 0.28, 0.36), x, z, off, Color3.fromRGB(94, 56, 34), Enum.Material.Wood, 0.74, 1)
+                    safeDecorPart(tile, "TileChestBand_" .. tile.Id, Vector3.new(0.60, 0.07, 0.40), x, z, off, Shell.Gold, Enum.Material.Metal, 0.92, 2)
+                elseif tile.Kind == "Trap" and not tile.Cleared then
+                    for s = 1, 3 do
+                        local off = decorOffset(tile, s)
+                        safeDecorPart(tile, "TileSpike_" .. tile.Id .. "_" .. tostring(s), Vector3.new(0.11, 0.24, 0.11), x, z, off, Color3.fromRGB(215, 70, 60), Enum.Material.Metal, 0.80, s)
+                    end
+                elseif tile.Kind == "Discovery" and not tile.Cleared then
+                    local off = decorOffset(tile, 2)
+                    local marker = safeDecorPart(tile, "TileRune_" .. tile.Id, Vector3.new(0.52, 0.08, 0.52), x, z, off, glowColor, Enum.Material.Neon, 0.70, 2)
+                    marker.Transparency = 0.24
+                    safeDecorPart(tile, "TileRunePost_" .. tile.Id, Vector3.new(0.14, 0.34, 0.14), x, z, off + Vector3.new(0.18, 0, 0.18), Color3.fromRGB(58, 54, 64), Enum.Material.Slate, 0.88, 3)
+                elseif tile.Kind == "Exit" and fake.Board.Theme == "Boss" then
+                    -- End vault exception: final room can look special.
+                    local off = Vector3.new(0, 0, d * 0.34)
+                    safeDecorPart(tile, "TileFinalVault_" .. tile.Id, Vector3.new(1.10, 0.42, 0.28), x, z, off, Color3.fromRGB(54, 42, 46), Enum.Material.Metal, 0.86, 1)
+                    safeDecorPart(tile, "TileFinalVaultGlow_" .. tile.Id, Vector3.new(0.92, 0.08, 0.32), x, z, off + Vector3.new(0, 0, 0.18), Color3.fromRGB(215, 70, 60), Enum.Material.Neon, 1.12, 2)
+                end
+
+
+            else
+                local fog = part(renderFolder, "TileFog_" .. tile.Id, Vector3.new(math.max(1.1, w * 0.62), 0.07, math.max(0.70, d * 0.55)), base * CFrame.new(x, 0.62, z), glowColor, Enum.Material.ForceField)
+                fog.Transparency = 0.84
+                fog.CanCollide = false
+                fog.CFrame = fog.CFrame * CFrame.Angles(0, math.rad(rot), 0)
+            end
+        end
         -- Door markers become clickable on the actual table when an exit is reached.
         for i, door in ipairs(fake.Board.Doors or {}) do
             local dx = -2 + ((i - 1) * 2.2)
@@ -1544,7 +1759,7 @@ local function eventIcon(kind)
 end
 
 local function showEventPopup(popup)
-    if not popup or popup.Id == state.lastPopupId or popup.Kind == "Move" then
+    if not popup or popup.Id == state.lastPopupId or popup.Kind == "Move" or popup.Kind == "Door" then
         return
     end
     state.lastPopupId = popup.Id
@@ -1601,26 +1816,27 @@ end
 local function makeChoiceButton(option, order)
     local button = make("TextButton", {
         BackgroundColor3 = Shell.Row2,
-        Size = UDim2.fromOffset(112, 76),
+        Size = UDim2.fromOffset(132, 86),
         Font = F.Heading,
-        TextSize = 24,
+        TextSize = 28,
         TextColor3 = Shell.Text,
         Text = tostring(option.Icon or "◆"),
         LayoutOrder = order,
         ZIndex = 122,
     }, choiceRow)
     round(button, 16)
-    stroke(button, 1, Shell.Border, 0.35)
+    stroke(button, 1, Shell.Border, 0.32)
 
     make("TextLabel", {
         BackgroundTransparency = 1,
         AnchorPoint = Vector2.new(0.5, 1),
         Position = UDim2.new(0.5, 0, 1, -8),
-        Size = UDim2.new(1, -12, 0, 18),
+        Size = UDim2.new(1, -12, 0, 24),
         Font = F.Heading,
-        TextSize = 10,
-        TextColor3 = Shell.Muted,
+        TextSize = 13,
+        TextColor3 = Shell.Text,
         Text = tostring(option.Label or option.Id or ""),
+        TextWrapped = true,
         TextTruncate = Enum.TextTruncate.AtEnd,
         ZIndex = 123,
     }, button)
@@ -1634,7 +1850,7 @@ local function renderChoicePanel()
     clear(choiceRow)
 
     local fake = state.fakeState
-    if not fake or state.dailyOpen or hub.Visible or state.backpackOpen then
+    if not fake or state.dailyOpen or hub.Visible or state.backpackOpen or fake.RouteWheel or fake.PendingRouteChoice then
         choicePanel.Visible = false
         return
     end
@@ -1775,7 +1991,7 @@ local function renderRouteWheel()
     routeRollPanel.Visible = true
     routeWheel.Rotation = 0
     routeRollTitle.Text = "Route Roll"
-    routeRollSubtitle.Text = "Split vote: 50 / 50"
+    routeRollSubtitle.Text = "Split vote — wheel decides first"
     routeRollText.Text = "Blue = your route. Purple = teammate route."
 
     local winnerIsPlayer = wheelData.Winner == wheelData.PlayerChoice
@@ -1895,77 +2111,97 @@ end
 local function makeActionCard(action, order)
     local mobile = state.layout == "MobileLandscape"
     local compact = state.layout == "Compact"
-    local w = mobile and 108 or (compact and 120 or 138)
-    local h = mobile and 145 or (compact and 158 or 178)
+    local w = mobile and 116 or (compact and 130 or 150)
+    local h = mobile and 154 or (compact and 170 or 190)
+    local roomActions = state.fakeState and state.fakeState.RoomActions or {}
+    local roomSpent = (action.Key == Constants.ACTIONS.Search and roomActions.SearchUsed) or (action.Key == Constants.ACTIONS.Scheme and roomActions.SchemeUsed)
+
+    -- Stable slot prevents neighboring cards/text from reflowing on hover.
+    local slot = make("Frame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.fromOffset(w + 14, h + 14),
+        LayoutOrder = order,
+        ZIndex = 35,
+    }, actionScroll)
 
     local card = make("TextButton", {
-        BackgroundColor3 = C.Card,
+        BackgroundColor3 = roomSpent and Color3.fromRGB(122, 116, 100) or C.Card,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.fromScale(0.5, 0.5),
         Size = UDim2.fromOffset(w, h),
         AutoButtonColor = false,
         Text = "",
-        LayoutOrder = order,
-        Rotation = (order - 3) * 1.8,
+        Rotation = (order - 3) * 1.25,
         ZIndex = 36,
-    }, actionScroll)
+    }, slot)
     round(card, 16)
-    local cardStroke = stroke(card, 2, state.selectedAction == action.Key and Shell.Gold or Color3.fromRGB(118, 90, 54), state.selectedAction == action.Key and 0 or 0.18)
-    local cardScale = make("UIScale", { Scale = state.selectedAction == action.Key and 1.02 or 1 }, card)
-    pad(card, 10, 10, 10, 10)
+
+    local cardStroke = stroke(card, 2, roomSpent and Color3.fromRGB(90, 84, 72) or (state.selectedAction == action.Key and Shell.Gold or Color3.fromRGB(118, 90, 54)), roomSpent and 0.35 or (state.selectedAction == action.Key and 0 or 0.18))
+    local cardScale = make("UIScale", {Scale = state.selectedAction == action.Key and 1.02 or 1}, card)
+
+    local content = make("Frame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.fromScale(1, 1),
+        ZIndex = 37,
+    }, card)
+    pad(content, 10, 10, 10, 10)
 
     local iconBox = make("TextLabel", {
         BackgroundColor3 = C.CardDark,
-        Size = UDim2.new(1, 0, 0, math.floor(h * 0.34)),
+        Size = UDim2.new(1, 0, 0, math.floor(h * 0.30)),
         Font = F.Heading,
-        TextSize = mobile and 26 or 36,
-        TextColor3 = C.Ink,
+        TextSize = mobile and 25 or 31,
+        TextColor3 = roomSpent and Color3.fromRGB(80, 74, 64) or C.Ink,
         Text = action.Icon,
         ZIndex = 37,
-    }, card)
+    }, content)
     round(iconBox, 12)
 
     make("TextLabel", {
         BackgroundTransparency = 1,
-        Position = UDim2.fromOffset(0, math.floor(h * 0.40)),
-        Size = UDim2.new(1, 0, 0, 26),
+        Position = UDim2.fromOffset(0, math.floor(h * 0.35)),
+        Size = UDim2.new(1, 0, 0, 28),
         Font = F.Heading,
-        TextSize = mobile and 14 or 18,
-        TextColor3 = C.Ink,
+        TextSize = mobile and 15 or 17,
+        TextColor3 = roomSpent and Color3.fromRGB(80, 74, 64) or C.Ink,
         Text = action.Title,
+        TextWrapped = true,
+        TextScaled = false,
         ZIndex = 37,
-    }, card)
+    }, content)
 
     make("TextLabel", {
         BackgroundTransparency = 1,
-        Position = UDim2.fromOffset(0, math.floor(h * 0.56)),
-        Size = UDim2.new(1, 0, 0, mobile and 48 or 62),
+        Position = UDim2.fromOffset(0, math.floor(h * 0.52)),
+        Size = UDim2.new(1, 0, 0, mobile and 48 or 58),
         Font = F.Body,
-        TextSize = mobile and 10 or 12,
+        TextSize = mobile and 11 or 12,
         TextWrapped = true,
         TextYAlignment = Enum.TextYAlignment.Top,
-        TextColor3 = Color3.fromRGB(70, 53, 38),
+        TextColor3 = roomSpent and Color3.fromRGB(82, 75, 64) or Color3.fromRGB(70, 53, 38),
         Text = action.Body,
         ZIndex = 37,
-    }, card)
+    }, content)
 
     local tag = make("TextLabel", {
         BackgroundColor3 = Color3.fromRGB(54, 42, 29),
         AnchorPoint = Vector2.new(0.5, 1),
         Position = UDim2.new(0.5, 0, 1, 0),
-        Size = UDim2.new(1, 0, 0, 24),
+        Size = UDim2.new(1, 0, 0, 26),
         Font = F.Heading,
-        TextSize = mobile and 9 or 10,
+        TextSize = mobile and 10 or 11,
         TextColor3 = C.Gold,
-        Text = action.Tag,
+        Text = roomSpent and "USED THIS ROOM" or action.Tag,
+        TextWrapped = true,
         ZIndex = 37,
-    }, card)
+    }, content)
     round(tag, 9)
 
     card.MouseEnter:Connect(function()
         if not mobile then
             TweenService:Create(cardScale, TweenInfo.new(0.12), {Scale = 1.035}):Play()
-            TweenService:Create(card, TweenInfo.new(0.12), {Rotation = 0}):Play()
             if cardStroke then
-                TweenService:Create(cardStroke, TweenInfo.new(0.12), {Transparency = 0.02, Color = Shell.Gold}):Play()
+                TweenService:Create(cardStroke, TweenInfo.new(0.12), {Transparency = 0.02, Color = roomSpent and Color3.fromRGB(90, 84, 72) or Shell.Gold}):Play()
             end
         end
     end)
@@ -1973,14 +2209,21 @@ local function makeActionCard(action, order)
     card.MouseLeave:Connect(function()
         if not mobile then
             TweenService:Create(cardScale, TweenInfo.new(0.12), {Scale = state.selectedAction == action.Key and 1.02 or 1}):Play()
-            TweenService:Create(card, TweenInfo.new(0.12), {Rotation = (order - 3) * 1.8}):Play()
             if cardStroke then
-                TweenService:Create(cardStroke, TweenInfo.new(0.12), {Transparency = state.selectedAction == action.Key and 0 or 0.18, Color = state.selectedAction == action.Key and Shell.Gold or Color3.fromRGB(118, 90, 54)}):Play()
+                TweenService:Create(cardStroke, TweenInfo.new(0.12), {
+                    Transparency = roomSpent and 0.35 or (state.selectedAction == action.Key and 0 or 0.18),
+                    Color = roomSpent and Color3.fromRGB(90, 84, 72) or (state.selectedAction == action.Key and Shell.Gold or Color3.fromRGB(118, 90, 54)),
+                }):Play()
             end
         end
     end)
 
     card.Activated:Connect(function()
+        if roomSpent then
+            showTicker(action.Title .. " is already used for this room.")
+            return
+        end
+
         state.selectedAction = action.Key
         if state.activeGame == Constants.GAME_KEYS.DungeonDoors and state.renderMode ~= "Spectate" then
             submitActionRemote:FireServer(action.Key)
@@ -2046,7 +2289,7 @@ local function renderLayout()
         dailyTitle.TextSize = 18
         dailySubtitle.TextSize = 11
 
-        actionLayer.Size = UDim2.fromOffset(math.min(v.X - 20, 720), 230)
+        actionLayer.Size = UDim2.fromOffset(math.min(v.X - 20, 740), 236)
         actionLayer.Position = UDim2.new(0.5, 0, 1, -78)
         actionLayout.Padding = UDim.new(0, 10)
         actionScroll.ScrollBarThickness = 3
@@ -2071,7 +2314,7 @@ local function renderLayout()
         dailyTitle.TextSize = 18
         dailySubtitle.TextSize = 11
 
-        actionLayer.Size = UDim2.fromOffset(math.min(v.X - 34, 850), 250)
+        actionLayer.Size = UDim2.fromOffset(math.min(v.X - 34, 880), 244)
         actionLayer.Position = UDim2.new(0.5, 0, 1, -86)
         actionLayout.Padding = UDim.new(0, 12)
 
@@ -2096,8 +2339,8 @@ local function renderLayout()
         dailyTitle.TextSize = 18
         dailySubtitle.TextSize = 11
 
-        actionLayer.Size = UDim2.fromOffset(860, 220)
-        actionLayer.Position = UDim2.new(0.5, 0, 1, -74)
+        actionLayer.Size = UDim2.fromOffset(900, 232)
+        actionLayer.Position = UDim2.new(0.5, 0, 1, -72)
         actionLayout.Padding = UDim.new(0, 12)
 
         ticker.Size = UDim2.fromOffset(620, 38)
@@ -2106,6 +2349,28 @@ local function renderLayout()
     end
 end
 
+
+
+local function updateTablePrompts()
+    local map = workspace:FindFirstChild("TableRushMap") or workspace:FindFirstChild("TableRushHall")
+    local dungeon = map and map:FindFirstChild("DungeonDoorsTable")
+    if not dungeon then
+        return
+    end
+
+    local hidePrompts = state.activeGame == Constants.GAME_KEYS.DungeonDoors
+
+    for _, descendant in ipairs(dungeon:GetDescendants()) do
+        if descendant:IsA("ProximityPrompt") then
+            local promptName = descendant.Name or ""
+            local parentName = descendant.Parent and descendant.Parent.Name or ""
+
+            if string.find(promptName, "JoinDungeonDoors") or string.find(promptName, "SpectateDungeonDoors") or string.find(parentName, "JoinDungeonDoors") or string.find(parentName, "SpectateDungeonDoors") then
+                descendant.Enabled = not hidePrompts
+            end
+        end
+    end
+end
 
 local function updateTableCamera()
     local camera = workspace.CurrentCamera

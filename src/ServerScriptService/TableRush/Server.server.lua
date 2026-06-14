@@ -122,31 +122,291 @@ local function pickRoomTemplate(state, entryDoor)
     local rng=Random.new((todaySeed()*19)+(idx*171)+((state and state.Threat or 0)*7))
     return weighted[rng:NextInteger(1,#weighted)] or ROOM_TEMPLATES[2]
 end
+local function snapRot(seed)
+    local rots={0,90,180,270}
+    return rots[(math.abs(seed)%4)+1]
+end
+
+local function roomShapeFor(tile, room)
+    local diff = room.Difficulty or 1
+    local theme = room.Theme or "Room"
+    local key = tostring(room.Id or room.Name or "") .. "_" .. tostring(tile.Id or "")
+    local score = math.abs(#key + ((tile.X or 0) * 7) + ((tile.Y or 0) * 11) + (diff * 5))
+
+    local themeShapes = {
+        Fear = {"tall","lshape","split","thin"},
+        Spooky = {"tall","alcove","lshape","wide"},
+        Ambush = {"split","lshape","thin","tall"},
+        Trap = {"thin","split","wide","lshape"},
+        Greed = {"wide","alcove","lshape","wide"},
+        Treasure = {"wide","alcove","wide","lshape"},
+        Control = {"tall","wide","split","thin"},
+        Danger = {"wide","thin","lshape","split"},
+        Poison = {"lshape","tall","alcove","split"},
+        Fire = {"thin","wide","split","lshape"},
+        Undead = {"tall","alcove","wide","split"},
+        Discovery = {"alcove","lshape","wide","tall"},
+        Gear = {"wide","split","alcove","thin"},
+        Boss = {"wide","lshape","split","alcove"},
+        BossPrep = {"tall","split","wide","lshape"},
+        Secret = {"alcove","wide","lshape","split"},
+    }
+
+    local shapes = themeShapes[theme] or {"square","wide","tall","lshape","thin","split","alcove"}
+    local shape = shapes[(score % #shapes) + 1]
+
+    if tile.Kind == "Enemy" and theme ~= "Greed" then
+        shape = (score % 2 == 0) and "wide" or "tall"
+    elseif tile.Kind == "Treasure" then
+        shape = (score % 2 == 0) and "alcove" or "wide"
+    elseif tile.Kind == "Trap" then
+        shape = (score % 2 == 0) and "thin" or "split"
+    elseif tile.Kind == "Discovery" then
+        shape = (score % 2 == 0) and "lshape" or "alcove"
+    end
+
+    -- Start and Exit are intentionally normal room tiles now.
+    -- Only the end vault uses special props through the Boss theme, not through Start/Exit shape rules.
+    if tile.Kind == "Start" or tile.Kind == "Exit" then
+        shape = shapes[((score + 2) % #shapes) + 1]
+        if shape == "square" then shape = "wide" end
+    end
+
+    local sizes = {
+        square={2.20,1.55},
+        wide={2.95,1.55},
+        tall={2.05,2.22},
+        thin={3.10,1.12},
+        split={2.55,1.82},
+        alcove={3.00,1.62},
+        lshape={2.55,1.95},
+    }
+    local s = sizes[shape] or sizes.square
+
+    local decorProfiles = {
+        Fear="candle_ruin",
+        Spooky="mist_stones",
+        Ambush="web_crates",
+        Trap="spikes_plate",
+        Greed="coin_crates",
+        Treasure="coin_crates",
+        Control="chain_blocks",
+        Danger="water_stones",
+        Poison="mushroom_blocks",
+        Fire="ember_blocks",
+        Undead="bone_slabs",
+        Discovery="rune_stones",
+        Gear="metal_crates",
+        Boss="vault_blocks",
+        BossPrep="vault_blocks",
+        Secret="holy_cache",
+        Loot="coin_crates",
+        Vermin="bone_slabs",
+        Movement="broken_floor",
+        Growth="mushroom_blocks",
+        Tutorial="stone_clutter",
+        Enemy="spikes_plate",
+    }
+
+    return {
+        Shape = shape,
+        W = s[1],
+        D = s[2],
+        Rot = snapRot(score),
+        DecorSeed = score,
+        DecorProfile = decorProfiles[theme] or "stone_clutter",
+    }
+end
+
 local function makeRoomState(state, roomIndex, entryDoor)
     local t = roomIndex==1 and ROOM_TEMPLATES[1] or pickRoomTemplate(state, entryDoor)
     local tiles=deepCopy(t.Tiles)
-    for _,tile in ipairs(tiles) do tile.Revealed = tile.Id=="start"; tile.Cleared = tile.Kind=="Start"; if tile.Kind=="Enemy" then tile.MaxHP=tile.HP end end
-    return {Id=t.Id, Name=t.Name, Theme=t.Theme, Difficulty=t.Difficulty, Atmosphere=t.Atmosphere, Props=deepCopy(t.Props or {}), SearchOutcomes=deepCopy(t.SearchOutcomes or {}), SchemeOutcomes=deepCopy(t.SchemeOutcomes or {}), Tiles=tiles, Doors=deepCopy(t.Doors or {})}
+    for _,tile in ipairs(tiles) do
+        tile.Revealed = tile.Id=="start"
+        tile.Cleared = tile.Kind=="Start"
+        if tile.Kind=="Enemy" then tile.MaxHP=tile.HP end
+        tile.Layout = roomShapeFor(tile, t)
+    end
+    return {Id=t.Id, Name=t.Name, Theme=t.Theme, Difficulty=t.Difficulty, Atmosphere=t.Atmosphere, Props=deepCopy(t.Props or {}), SearchOutcomes=deepCopy(t.SearchOutcomes or {}), SchemeOutcomes=deepCopy(t.SchemeOutcomes or {}), EntryDoor=entryDoor or "start", Tiles=tiles, Doors=deepCopy(t.Doors or {})}
 end
+
 local function getTile(state,id) for _,tile in ipairs(state.Board.Tiles) do if tile.Id==id then return tile end end end
 local function nextEventId(state) state.EventCounter=(state.EventCounter or 0)+1; return state.EventCounter end
 local function setPopup(state,kind,title,sub,body) state.EventPopup={Id=nextEventId(state),Kind=kind,Title=title,Subtitle=sub or "",Body=body or ""} end
-local function availableMoves(state) local cur=getTile(state,state.PlayerTile); local moves={}; if not cur then return moves end; for _,id in ipairs(cur.Neighbors or {}) do local t=getTile(state,id); if t then table.insert(moves,{Id=t.Id,Label=t.Label,Kind=t.Kind}) end end; return moves end
+local function currentTileHasLiveMonster(state)
+    local current=getTile(state,state.PlayerTile)
+    return current and current.Kind=="Enemy" and not current.Cleared and (current.HP or 0)>0
+end
+
+local function availableMoves(state)
+    local current=getTile(state,state.PlayerTile)
+    local moves={}
+    if not current then return moves end
+
+    local fleeing=currentTileHasLiveMonster(state)
+
+    for _,id in ipairs(current.Neighbors or {}) do
+        local tile=getTile(state,id)
+        if tile then
+            -- If a live monster is on your current tile, Step becomes Run Away.
+            -- You may retreat to revealed neighboring tiles only.
+            -- You cannot push deeper into unknown rooms while a monster is standing on you.
+            if not fleeing or tile.Revealed then
+                table.insert(moves,{Id=tile.Id,Label=tile.Label,Kind=tile.Kind,Flee=fleeing})
+            end
+        end
+    end
+    return moves
+end
+
 local function createStartingBackpack() return {Items={{Uid="item_1",Data=ITEM_LIBRARY.RustySword,Equipped=true},{Uid="item_2",Data=ITEM_LIBRARY.SmallPotion,Equipped=false}},Equipped={Weapon="item_1",Armor=nil,Boots=nil}} end
 local function getEquippedPower(state, slot) local uid=state.Backpack.Equipped[slot]; if not uid then return 0 end; for _,e in ipairs(state.Backpack.Items) do if e.Uid==uid then return e.Data.Power or 0 end end; return 0 end
 local function addItem(state, itemId) local data=ITEM_LIBRARY[itemId]; if not data then return nil end; local uid="item_"..tostring((state.ItemCounter or 2)+1); state.ItemCounter=(state.ItemCounter or 2)+1; local e={Uid=uid,Data=data,Equipped=false}; table.insert(state.Backpack.Items,e); if data.Slot then if state.Backpack.Equipped[data.Slot] then state.PendingEquip={NewUid=uid,Slot=data.Slot,NewName=data.Name,Body=data.Body}; state.CanAct=false else state.Backpack.Equipped[data.Slot]=uid; e.Equipped=true end end; return e end
 local function syncLegacyFields(state) state.CurrentRoom.Name=state.Board.Name; state.CurrentRoom.Type=state.Board.Theme; state.Doors=state.Board.Doors; state.Enemies={}; for _,tile in ipairs(state.Board.Tiles or {}) do if tile.Kind=="Enemy" and not tile.Cleared and tile.Revealed then table.insert(state.Enemies,{Id=tile.Id,Name=tile.Enemy,Zone=tile.Label,HP=tile.HP or 1,MaxHP=tile.MaxHP or tile.HP or 1,IntentIcon="!",Intent="Attacks if not controlled.",Kind=tile.Enemy}) end end; state.Players[1].Zone=(getTile(state,state.PlayerTile) and getTile(state,state.PlayerTile).Label) or "Unknown"; state.Players[2].Zone=(getTile(state,state.PartnerTile) and getTile(state,state.PartnerTile).Label) or "Following" end
-local function makeDungeonState(player) local room=makeRoomState(nil,1,"start"); local state={Phase="Your Turn",RoomIndex=1,RoomsToWin=15,BonusRooms=0,MaxRooms=18,Pot=250,Threat=2,CurrentRoom={Key="Room1",Name=room.Name,Type=room.Theme,Clear="Explore tiles and survive.",DoorText="Reach exits."},Board=room,PlayerTile="start",PartnerTile="start",CanAct=true,ActionUsed=false,MoveOptions=nil,DoorOptions=nil,DoorVotes={},RouteWheel=nil,EventCounter=0,ItemCounter=2,Backpack=createStartingBackpack(),PendingEquip=nil,Players={{UserId=player.UserId,Name="You",Zone="Entry",Pouch=300,Bank=0,HP=5,Keys=0,Light=0,Relics={}}, {UserId=0,Name="Partner",Zone="Entry",Pouch=300,Bank=0,HP=5,Keys=0,Light=0,Relics={}}},Enemies={},Doors=room.Doors,ActionCards=DungeonDoorsSpec.Actions,LastEvent="Use Step, then click a glowing tile."}; setPopup(state,"Room","Dusty Entry","Room 1 / 15","One action per turn. This run gets harder."); return state end
+local function makeDungeonState(player) local room=makeRoomState(nil,1,"start"); local state={Phase="Your Turn",RoomIndex=1,RoomsToWin=15,BonusRooms=0,MaxRooms=18,Pot=250,Threat=2,CurrentRoom={Key="Room1",Name=room.Name,Type=room.Theme,Clear="Explore tiles and survive.",DoorText="Reach exits."},Board=room,PlayerTile="start",PartnerTile="start",CanAct=true,ActionUsed=false,MoveOptions=nil,DoorOptions=nil,DoorVotes={},RouteWheel=nil,RoomActions={SearchUsed=false,SchemeUsed=false,SearchBy=nil,SchemeBy=nil},EventCounter=0,ItemCounter=2,Backpack=createStartingBackpack(),PendingEquip=nil,Players={{UserId=player.UserId,Name="You",Zone="Entry",Pouch=300,Bank=0,HP=5,Keys=0,Light=0,Relics={}}, {UserId=0,Name="Partner",Zone="Entry",Pouch=300,Bank=0,HP=5,Keys=0,Light=0,Relics={}}},Enemies={},Doors=room.Doors,ActionCards=DungeonDoorsSpec.Actions,LastEvent="Use Step, then click a glowing tile."}; setPopup(state,"Room","Dusty Entry","Room 1 / 15","One action per turn. This run gets harder."); return state end
 local function tableList() local list={}; for _,g in ipairs(GameCatalog.GetPublicList()) do local count=0; for _,k in pairs(joinedGame) do if k==g.Key then count += 1 end end; table.insert(list,{Key=g.Key,DisplayName=g.DisplayName,Status=g.Status,Count=count,MaxPlayers=g.MaxPlayers,Tagline=g.Tagline}) end; return list end
 local function sendState(player,mode) local state=playerStates[player.UserId]; if not state then return end; syncLegacyFields(state); clientEvent:FireClient(player,Constants.TOPICS.RenderGame,{GameKey=Constants.GAME_KEYS.DungeonDoors,GameInfo=GameCatalog.GetGame(Constants.GAME_KEYS.DungeonDoors),FakeState=state,Mode=mode or "Join"}) end
 local function sendProfile(player) clientEvent:FireClient(player,Constants.TOPICS.Profile,getProfile(player)); clientEvent:FireClient(player,Constants.TOPICS.TableList,tableList()) end
-local function beginNextTurn(player,state,delaySeconds) delaySeconds=delaySeconds or 1.4; state.CanAct=false; state.ActionUsed=true; state.MoveOptions=nil; if not state.DoorOptions and not state.PendingEquip then state.Phase="Partner Resolving"; state.LastEvent="Waiting for teammate..."; sendState(player,"Join"); task.delay(delaySeconds,function() if not player.Parent then return end; local live=playerStates[player.UserId]; if live~=state then return end; if live.DoorOptions or live.PendingEquip then return end; live.CanAct=true; live.ActionUsed=false; live.Phase="Your Turn"; live.LastEvent="Teammate resolved. Your turn."; sendState(player,"Join") end) end end
+local function resolveEnemyTurn(player,state)
+    local tile=getTile(state,state.PlayerTile)
+    if not tile or tile.Kind~="Enemy" or tile.Cleared or (tile.HP or 0)<=0 then return false end
+    local you=state.Players[1]
+    local armor=getEquippedPower(state,"Armor")
+    local damage=math.max(1,math.floor((state.Board.Difficulty or 1)/2))-armor
+    damage=math.max(0,damage)
+    state.Phase="Enemy Turn"
+    state.CanAct=false
+    state.ActionUsed=true
+    state.MoveOptions=nil
+    if damage>0 then
+        you.HP=math.max(1,you.HP-damage)
+        state.Threat += 1
+        state.LastEvent=(tile.Enemy or "Enemy").." attacks for "..tostring(damage).."."
+        setPopup(state,"Combat","Enemy Turn",tile.Enemy or "Enemy","It attacks back as its own turn. You take "..tostring(damage).." damage.")
+    else
+        state.LastEvent=(tile.Enemy or "Enemy").." attacks, but armor blocks it."
+        setPopup(state,"Combat","Enemy Turn",tile.Enemy or "Enemy","Your armor blocks the enemy's turn.")
+    end
+    return true
+end
+
+local function beginNextTurn(player,state,delaySeconds)
+    delaySeconds=delaySeconds or 1.4
+    state.CanAct=false
+    state.ActionUsed=true
+    state.MoveOptions=nil
+
+    if state.DoorOptions or state.PendingEquip then return end
+
+    local function partnerWait()
+        if not player.Parent then return end
+        local live=playerStates[player.UserId]
+        if live~=state then return end
+        if live.DoorOptions or live.PendingEquip then return end
+        live.Phase="Partner Resolving"
+        live.LastEvent="Waiting for teammate..."
+        sendState(player,"Join")
+        task.delay(1.0,function()
+            if not player.Parent then return end
+            local again=playerStates[player.UserId]
+            if again~=state then return end
+            if again.DoorOptions or again.PendingEquip then return end
+            again.CanAct=true
+            again.ActionUsed=false
+            again.Phase="Your Turn"
+            again.LastEvent="Teammate resolved. Your turn."
+            sendState(player,"Join")
+        end)
+    end
+
+    if resolveEnemyTurn(player,state) then
+        sendState(player,"Join")
+        task.delay(delaySeconds,partnerWait)
+    else
+        partnerWait()
+    end
+end
 local function applyOutcome(player,state,outcome,source) local you=state.Players[1]; if not outcome then return end; if outcome.Effect=="Light" then you.Light += 1; you.Pouch += 25 elseif outcome.Effect=="Threat" then state.Threat += 2 elseif outcome.Effect=="Coins" then you.Pouch += 65 elseif outcome.Effect=="Damage" then you.HP=math.max(1,you.HP-1); state.Threat += 1; progressTask(getProfile(player),"TrapEvent") elseif outcome.Effect=="Pot" then state.Pot += 100; state.Threat += 1 elseif outcome.Effect=="Loot" then local item=addItem(state,LOOT_TABLE[((state.EventCounter+#state.Backpack.Items)%#LOOT_TABLE)+1]); if item then you.Pouch += 40 end elseif outcome.Effect=="Lose" then you.Pouch=math.max(0,you.Pouch-50); state.Threat += 1 elseif outcome.Effect=="Reveal" then you.Light += 1 end; setPopup(state,source or "Discovery",source or "Outcome",state.Board.Name,outcome.Text or ""); state.LastEvent=outcome.Text or "The room shifts." end
-local function revealTileEvent(player,state,tile) local profile=getProfile(player); tile.Revealed=true; state.MoveOptions=nil; if tile.Kind=="Enemy" then state.Threat += 2+math.floor((state.Board.Difficulty or 1)/2); state.Phase="Enemy Revealed"; state.LastEvent=(tile.Enemy or "Enemy").." appears. Threat rises."; setPopup(state,"Enemy",tile.Enemy or "Enemy",tile.Label,"Danger is real now.") elseif tile.Kind=="Trap" then local damage=math.max(1,math.floor((state.Board.Difficulty or 1)/2))-getEquippedPower(state,"Boots"); damage=math.max(0,damage); state.Players[1].HP=math.max(1,state.Players[1].HP-damage); state.Threat += 2; tile.Cleared=true; progressTask(profile,"TrapEvent"); state.Phase="Trap Triggered"; state.LastEvent=damage==0 and "Boots absorbed the trap." or ("Trap hit for "..tostring(damage).." HP."); setPopup(state,"Trap","SNAP!",tile.Label,state.LastEvent) elseif tile.Kind=="Treasure" then local item=addItem(state,LOOT_TABLE[((state.RoomIndex+state.EventCounter+#state.Backpack.Items)%#LOOT_TABLE)+1]); local gold=60+((state.Board.Difficulty or 1)*20); state.Players[1].Pouch += gold; tile.Cleared=true; progressTask(profile,"FindTreasure"); state.Phase="Treasure Found"; state.LastEvent="Found "..item.Data.Name.." and +"..tostring(gold).." pouch."; setPopup(state,"Treasure","Treasure",item.Data.Name,item.Data.Body) elseif tile.Kind=="Discovery" then state.Players[1].Light += 1; state.Players[1].Keys += 1; if state.RoomsToWin<state.MaxRooms and (state.Board.Theme=="Secret" or state.RoomIndex%5==0) then state.RoomsToWin += 1; state.BonusRooms += 1; state.LastEvent="Secret route found. Run length increased." else state.LastEvent="Found +1 Light and +1 Key." end; tile.Cleared=true; progressTask(profile,"GainLight"); state.Phase="Discovery"; setPopup(state,"Discovery","Discovery",tile.Label,state.LastEvent) elseif tile.Kind=="Exit" then tile.Cleared=true; state.CanAct=false; state.ActionUsed=true; state.DoorOptions=state.Board.Doors; state.DoorVotes={}; state.Phase="Choose Door"; if state.RoomIndex>=state.RoomsToWin then state.LastEvent="Run complete."; setPopup(state,"Victory","Run Complete","Doorwarden cleared","Final vault and scoring will expand next.") else state.LastEvent="Exit reached. Vote next route."; setPopup(state,"Door","Exit Reached","Choose route","Both players vote. Split votes spin the wheel.") end; progressTask(profile,"UnlockExit") else tile.Cleared=true; state.Phase="Tile Revealed"; state.LastEvent="Revealed "..tile.Label.."."; setPopup(state,"Room",tile.Label,"Safe tile","For now, this tile is quiet.") end end
-local function moveToTile(player,state,tileId) local valid=false; for _,o in ipairs(state.MoveOptions or {}) do if o.Id==tileId then valid=true end end; if not valid then state.LastEvent="Use Step, then click a glowing reachable tile."; return false end; local tile=getTile(state,tileId); if not tile then return false end; state.PlayerTile=tileId; state.PartnerTile=tileId; progressTask(getProfile(player),"StepAround"); revealTileEvent(player,state,tile); return true end
-local function chooseDoor(player,state,doorId) if not state.DoorOptions then return end; local chosen=nil; for _,d in ipairs(state.DoorOptions) do if d.Id==doorId then chosen=d end end; if not chosen then return end; state.DoorVotes.Player=doorId; state.DoorVotes.Partner=state.DoorOptions[((state.RoomIndex % #state.DoorOptions)+1)].Id; if state.DoorVotes.Player~=state.DoorVotes.Partner then state.RouteWheel={Id=nextEventId(state),PlayerChoice=state.DoorVotes.Player,PartnerChoice=state.DoorVotes.Partner,Winner=((state.RoomIndex+state.Threat)%2==0) and state.DoorVotes.Player or state.DoorVotes.Partner}; for _,d in ipairs(state.DoorOptions) do if d.Id==state.RouteWheel.Winner then chosen=d end end end; if state.RoomIndex>=state.RoomsToWin then state.Phase="Run Complete"; state.CanAct=false; setPopup(state,"Victory","Victory","Run complete","Final scoring will expand next."); return end; state.RoomIndex += 1; state.Board=makeRoomState(state,state.RoomIndex,chosen.Id); state.PlayerTile="start"; state.PartnerTile="start"; state.MoveOptions=nil; state.DoorOptions=nil; state.PendingEquip=nil; state.CanAct=true; state.ActionUsed=false; state.Phase="Your Turn"; state.CurrentRoom={Key="Room"..tostring(state.RoomIndex),Name=state.Board.Name,Type=state.Board.Theme,Clear="Survive the room.",DoorText="Reach the exit."}; state.LastEvent="Entered "..state.Board.Name.."."; setPopup(state,"Room",state.Board.Name,"Room "..tostring(state.RoomIndex).." / "..tostring(state.RoomsToWin),"Search and Scheme odds are room-specific.") end
-local function submitDungeonAction(player,actionKey) if joinedGame[player.UserId]~=Constants.GAME_KEYS.DungeonDoors then return end; local state=playerStates[player.UserId] or makeDungeonState(player); playerStates[player.UserId]=state; local profile=getProfile(player); local you=state.Players[1]; local tile=getTile(state,state.PlayerTile); if not state.CanAct or state.ActionUsed or state.PendingEquip or state.DoorOptions then state.LastEvent="Wait for the current decision to resolve."; sendState(player,"Join"); return end; if actionKey==Constants.ACTIONS.Step then state.MoveOptions=availableMoves(state); state.CanAct=false; state.ActionUsed=true; state.Phase="Move"; state.LastEvent="Click a glowing tile on the table."; sendState(player,"Join"); return elseif actionKey==Constants.ACTIONS.Strike then if tile and tile.Kind=="Enemy" and not tile.Cleared then local damage=1+getEquippedPower(state,"Weapon"); tile.HP=math.max(0,(tile.HP or 1)-damage); progressTask(profile,"StrikeEnemy"); if tile.HP<=0 then tile.Cleared=true; local reward=ENEMY_REWARDS[tile.Enemy] or 100; you.Pouch += reward; state.Pot += math.floor(reward/2); state.LastEvent=(tile.Enemy or "Enemy").." defeated."; progressTask(profile,"DefeatEnemy"); setPopup(state,"Combat","Enemy Defeated",tile.Enemy,"+"..tostring(reward).." pouch.") else local counter=math.max(1,math.floor((state.Board.Difficulty or 1)/2))-getEquippedPower(state,"Armor"); counter=math.max(0,counter); you.HP=math.max(1,you.HP-counter); state.Threat += 1; state.LastEvent=counter>0 and ((tile.Enemy or "Enemy").." counterattacked for "..tostring(counter)..".") or "Armor blocked the counterattack."; setPopup(state,"Combat",counter>0 and "Counterattack!" or "Blocked!",tile.Enemy,state.LastEvent) end else state.LastEvent="No enemy on this tile."; setPopup(state,"Info","No Enemy","Strike has no target","Move onto an enemy tile first.") end elseif actionKey==Constants.ACTIONS.Search then progressTask(profile,"SearchSafely"); applyOutcome(player,state,chooseWeighted(state.Board.SearchOutcomes,Random.new(todaySeed()+state.EventCounter+state.RoomIndex+state.Threat)),"Search") elseif actionKey==Constants.ACTIONS.Shield then you.HP=math.min(8,you.HP+1); state.Threat=math.max(0,state.Threat-1); state.LastEvent="Shield up. +1 HP and -1 Threat."; progressTask(profile,"ShieldPartner"); setPopup(state,"Guard","Shield Raised","Defensive stance","+1 HP. Threat reduced.") elseif actionKey==Constants.ACTIONS.Scheme then progressTask(profile,"SchemeOnce"); applyOutcome(player,state,chooseWeighted(state.Board.SchemeOutcomes,Random.new(todaySeed()+state.EventCounter+state.RoomIndex+(state.Threat*5))),"Scheme") end; beginNextTurn(player,state,1.35); clientEvent:FireClient(player,Constants.TOPICS.Profile,profile) end
-local function handleTableClick(player,payload) if type(payload)~="table" then return end; if joinedGame[player.UserId]~=Constants.GAME_KEYS.DungeonDoors then return end; local state=playerStates[player.UserId]; if not state then return end; if payload.Kind=="Tile" and payload.Id then if state.MoveOptions then local moved=moveToTile(player,state,payload.Id); if moved and not state.DoorOptions and not state.PendingEquip then beginNextTurn(player,state,1.35) else sendState(player,"Join") end; clientEvent:FireClient(player,Constants.TOPICS.Profile,getProfile(player)) else state.LastEvent="Use Step first, then click a glowing tile."; sendState(player,"Join") end end end
+local function revealTileEvent(player,state,tile) local profile=getProfile(player); tile.Revealed=true; state.MoveOptions=nil; if tile.Kind=="Enemy" then state.Threat += 2+math.floor((state.Board.Difficulty or 1)/2); state.Phase="Enemy Revealed"; state.LastEvent=(tile.Enemy or "Enemy").." appears. Threat rises."; setPopup(state,"Enemy",tile.Enemy or "Enemy",tile.Label,"Danger is real now.") elseif tile.Kind=="Trap" then local damage=math.max(1,math.floor((state.Board.Difficulty or 1)/2))-getEquippedPower(state,"Boots"); damage=math.max(0,damage); state.Players[1].HP=math.max(1,state.Players[1].HP-damage); state.Threat += 2; tile.Cleared=true; progressTask(profile,"TrapEvent"); state.Phase="Trap Triggered"; state.LastEvent=damage==0 and "Boots absorbed the trap." or ("Trap hit for "..tostring(damage).." HP."); setPopup(state,"Trap","SNAP!",tile.Label,state.LastEvent) elseif tile.Kind=="Treasure" then local item=addItem(state,LOOT_TABLE[((state.RoomIndex+state.EventCounter+#state.Backpack.Items)%#LOOT_TABLE)+1]); local gold=60+((state.Board.Difficulty or 1)*20); state.Players[1].Pouch += gold; tile.Cleared=true; progressTask(profile,"FindTreasure"); state.Phase="Treasure Found"; state.LastEvent="Found "..item.Data.Name.." and +"..tostring(gold).." pouch."; setPopup(state,"Treasure","Treasure",item.Data.Name,item.Data.Body) elseif tile.Kind=="Discovery" then state.Players[1].Light += 1; state.Players[1].Keys += 1; if state.RoomsToWin<state.MaxRooms and (state.Board.Theme=="Secret" or state.RoomIndex%5==0) then state.RoomsToWin += 1; state.BonusRooms += 1; state.LastEvent="Secret route found. Run length increased." else state.LastEvent="Found +1 Light and +1 Key." end; tile.Cleared=true; progressTask(profile,"GainLight"); state.Phase="Discovery"; setPopup(state,"Discovery","Discovery",tile.Label,state.LastEvent) elseif tile.Kind=="Exit" then tile.Cleared=true; state.CanAct=false; state.ActionUsed=true; state.DoorOptions=state.Board.Doors; state.DoorVotes={}; state.Phase="Choose Door"; if state.RoomIndex>=state.RoomsToWin then state.LastEvent="Run complete."; setPopup(state,"Victory","Run Complete","Doorwarden cleared","Final vault and scoring will expand next.") else state.LastEvent="Exit reached. Vote next route." end; progressTask(profile,"UnlockExit") else tile.Cleared=true; state.Phase="Tile Revealed"; state.LastEvent="Revealed "..tile.Label.."."; setPopup(state,"Room",tile.Label,"Safe tile","For now, this tile is quiet.") end end
+local function moveToTile(player,state,tileId) local valid=false; for _,o in ipairs(state.MoveOptions or {}) do if o.Id==tileId then valid=true end end; if not valid then state.LastEvent=currentTileHasLiveMonster(state) and "You can only run to revealed tiles while a monster is here." or "Use Step, then click a glowing reachable tile."; return false end; local tile=getTile(state,tileId); if not tile then return false end; state.PlayerTile=tileId; state.PartnerTile=tileId; progressTask(getProfile(player),"StepAround"); revealTileEvent(player,state,tile); return true end
+local function loadNextRoomAfterDoor(player,state,chosen)
+    if not chosen then return end
+
+    if state.RoomIndex>=state.RoomsToWin then
+        state.Phase="Run Complete"
+        state.CanAct=false
+        setPopup(state,"Victory","Victory","Run complete","Final scoring will expand next.")
+        sendState(player,"Join")
+        return
+    end
+
+    state.RoomIndex += 1
+    state.Board=makeRoomState(state,state.RoomIndex,chosen.Id)
+    state.PlayerTile="start"
+    state.PartnerTile="start"
+    state.MoveOptions=nil
+    state.DoorOptions=nil
+    state.DoorVotes={}
+    state.RouteWheel=nil
+    state.PendingRouteChoice=nil
+    state.PendingEquip=nil
+    state.RoomActions={SearchUsed=false,SchemeUsed=false,SearchBy=nil,SchemeBy=nil}
+    state.CanAct=true
+    state.ActionUsed=false
+    state.Phase="Your Turn"
+    state.CurrentRoom={Key="Room"..tostring(state.RoomIndex),Name=state.Board.Name,Type=state.Board.Theme,Clear="Survive the room.",DoorText="Reach the exit."}
+    state.LastEvent="Entered "..state.Board.Name.."."
+    setPopup(state,"Room",state.Board.Name,"Room "..tostring(state.RoomIndex).." / "..tostring(state.RoomsToWin),"Search and Scheme odds are room-specific.")
+    sendState(player,"Join")
+end
+
+local function chooseDoor(player,state,doorId)
+    if not state.DoorOptions then return end
+
+    local chosen=nil
+    for _,d in ipairs(state.DoorOptions) do
+        if d.Id==doorId then chosen=d; break end
+    end
+    if not chosen then return end
+
+    state.DoorVotes=state.DoorVotes or {}
+    state.DoorVotes.Player=doorId
+    state.DoorVotes.Partner=state.SimPartnerChoice or state.DoorOptions[((state.RoomIndex % #state.DoorOptions)+1)].Id
+
+    if state.DoorVotes.Player~=state.DoorVotes.Partner then
+        local winner=((state.RoomIndex+state.Threat)%2==0) and state.DoorVotes.Player or state.DoorVotes.Partner
+        local winnerDoor=nil
+        for _,d in ipairs(state.DoorOptions) do
+            if d.Id==winner then winnerDoor=d; break end
+        end
+
+        local wheelId=(state.EventCounter or 0)+1
+        state.EventCounter=wheelId
+        state.RouteWheel={Id=wheelId,PlayerChoice=state.DoorVotes.Player,PartnerChoice=state.DoorVotes.Partner,Winner=winner}
+        state.PendingRouteChoice=winnerDoor
+        state.DoorOptions=nil
+        state.Phase="Route Roll"
+        state.CanAct=false
+        state.ActionUsed=true
+        state.LastEvent="Split route vote. Rolling for the winning route..."
+        sendState(player,"Join")
+
+        task.delay(2.85,function()
+            if not player.Parent then return end
+            local live=playerStates[player.UserId]
+            if live~=state then return end
+            if not live.PendingRouteChoice then return end
+            loadNextRoomAfterDoor(player,live,live.PendingRouteChoice)
+        end)
+        return
+    end
+
+    state.DoorOptions=nil
+    loadNextRoomAfterDoor(player,state,chosen)
+end
+
+local function submitDungeonAction(player,actionKey) if joinedGame[player.UserId]~=Constants.GAME_KEYS.DungeonDoors then return end; local state=playerStates[player.UserId] or makeDungeonState(player); playerStates[player.UserId]=state; local profile=getProfile(player); local you=state.Players[1]; local tile=getTile(state,state.PlayerTile); if not state.CanAct or state.ActionUsed or state.PendingEquip or state.DoorOptions then state.LastEvent="Wait for the current decision to resolve."; sendState(player,"Join"); return end; if actionKey==Constants.ACTIONS.Step then state.MoveOptions=availableMoves(state); if #state.MoveOptions==0 then state.LastEvent=currentTileHasLiveMonster(state) and "Monster blocks the way. No revealed escape tile is adjacent." or "No reachable tile."; setPopup(state,"Info","No Escape",state.Board.Name,state.LastEvent); sendState(player,"Join"); return end; state.CanAct=false; state.ActionUsed=true; state.Phase=currentTileHasLiveMonster(state) and "Run Away" or "Move"; state.LastEvent=currentTileHasLiveMonster(state) and "Monster nearby. Click a revealed tile to run away." or "Click a glowing tile on the table."; sendState(player,"Join"); return elseif actionKey==Constants.ACTIONS.Strike then if tile and tile.Kind=="Enemy" and not tile.Cleared then local damage=1+getEquippedPower(state,"Weapon"); tile.HP=math.max(0,(tile.HP or 1)-damage); progressTask(profile,"StrikeEnemy"); if tile.HP<=0 then tile.Cleared=true; local reward=ENEMY_REWARDS[tile.Enemy] or 100; you.Pouch += reward; state.Pot += math.floor(reward/2); state.LastEvent=(tile.Enemy or "Enemy").." defeated."; progressTask(profile,"DefeatEnemy"); setPopup(state,"Combat","Enemy Defeated",tile.Enemy,"+"..tostring(reward).." pouch.") else state.LastEvent=(tile.Enemy or "Enemy").." is wounded. Enemy turn incoming."; setPopup(state,"Combat","Hit Landed",tile.Enemy,"The enemy survives. Its turn is next.") end else state.LastEvent="No enemy on this tile."; setPopup(state,"Info","No Enemy","Strike has no target","Move onto an enemy tile first.") end elseif actionKey==Constants.ACTIONS.Search then if state.RoomActions and state.RoomActions.SearchUsed then state.LastEvent="Search is already spent for this room."; setPopup(state,"Info","Search Spent",state.Board.Name,"Your team can only Search once per room."); sendState(player,"Join"); return end; state.RoomActions=state.RoomActions or {}; state.RoomActions.SearchUsed=true; state.RoomActions.SearchBy=player.UserId; progressTask(profile,"SearchSafely"); applyOutcome(player,state,chooseWeighted(state.Board.SearchOutcomes,Random.new(todaySeed()+state.EventCounter+state.RoomIndex+state.Threat)),"Search") elseif actionKey==Constants.ACTIONS.Shield then you.HP=math.min(8,you.HP+1); state.Threat=math.max(0,state.Threat-1); state.LastEvent="Shield up. +1 HP and -1 Threat."; progressTask(profile,"ShieldPartner"); setPopup(state,"Guard","Shield Raised","Defensive stance","+1 HP. Threat reduced.") elseif actionKey==Constants.ACTIONS.Scheme then if state.RoomActions and state.RoomActions.SchemeUsed then state.LastEvent="Scheme is already spent for this room."; setPopup(state,"Info","Scheme Spent",state.Board.Name,"Your team can only Scheme once per room."); sendState(player,"Join"); return end; state.RoomActions=state.RoomActions or {}; state.RoomActions.SchemeUsed=true; state.RoomActions.SchemeBy=player.UserId; progressTask(profile,"SchemeOnce"); applyOutcome(player,state,chooseWeighted(state.Board.SchemeOutcomes,Random.new(todaySeed()+state.EventCounter+state.RoomIndex+(state.Threat*5))),"Scheme") end; beginNextTurn(player,state,1.35); clientEvent:FireClient(player,Constants.TOPICS.Profile,profile) end
+local function handleTableClick(player,payload) if type(payload)~="table" then return end; if joinedGame[player.UserId]~=Constants.GAME_KEYS.DungeonDoors then return end; local state=playerStates[player.UserId]; if not state then return end; if payload.Kind=="Tile" and payload.Id then if state.MoveOptions then local moved=moveToTile(player,state,payload.Id); if moved and not state.DoorOptions and not state.PendingEquip then beginNextTurn(player,state,1.35) else sendState(player,"Join") end; clientEvent:FireClient(player,Constants.TOPICS.Profile,getProfile(player)) else state.LastEvent=currentTileHasLiveMonster(state) and "Use Step to run away to a revealed tile." or "Use Step first, then click a glowing tile."; sendState(player,"Join") end end end
 local function handleChoice(player,choiceId) if joinedGame[player.UserId]~=Constants.GAME_KEYS.DungeonDoors then return end; local state=playerStates[player.UserId]; if not state then return end; if state.PendingEquip then if choiceId=="equip" then local p=state.PendingEquip; for _,e in ipairs(state.Backpack.Items) do if e.Data.Slot==p.Slot then e.Equipped=false end; if e.Uid==p.NewUid then e.Equipped=true end end; state.Backpack.Equipped[p.Slot]=p.NewUid; state.PendingEquip=nil; state.CanAct=true; state.ActionUsed=false; setPopup(state,"Item","Equipped","Gear changed","Your backpack equipment updated."); progressTask(getProfile(player),"EquipItem") elseif choiceId=="keep" then state.PendingEquip=nil; state.CanAct=true; state.ActionUsed=false end elseif state.DoorOptions then chooseDoor(player,state,choiceId) end; sendState(player,"Join"); clientEvent:FireClient(player,Constants.TOPICS.Profile,getProfile(player)) end
 local function handleBackpackAction(player,payload) if joinedGame[player.UserId]~=Constants.GAME_KEYS.DungeonDoors then return end; local state=playerStates[player.UserId]; if not state then return end; payload=payload or {}; local entryIndex,entry=nil,nil; for i,item in ipairs(state.Backpack.Items or {}) do if item.Uid==payload.Uid then entryIndex=i; entry=item end end; if not entry then return end; if payload.Action=="equip" and entry.Data.Slot then for _,item in ipairs(state.Backpack.Items) do if item.Data.Slot==entry.Data.Slot then item.Equipped=false end end; entry.Equipped=true; state.Backpack.Equipped[entry.Data.Slot]=entry.Uid; progressTask(getProfile(player),"EquipItem"); setPopup(state,"Item","Equipped",entry.Data.Name,entry.Data.Body) elseif payload.Action=="use" and entry.Data.Type=="Consumable" then state.Players[1].HP=math.min(8,state.Players[1].HP+(entry.Data.Power or 1)); table.remove(state.Backpack.Items,entryIndex); setPopup(state,"Item","Used Item",entry.Data.Name,"Recovered HP.") end; sendState(player,"Join"); clientEvent:FireClient(player,Constants.TOPICS.Profile,getProfile(player)) end
 local function renderGameFor(player,gameKey,mode) local gameInfo=GameCatalog.GetGame(gameKey); if not gameInfo then return end; if gameKey==Constants.GAME_KEYS.DungeonDoors then playerStates[player.UserId]=playerStates[player.UserId] or makeDungeonState(player); sendState(player,mode or "Join") end end

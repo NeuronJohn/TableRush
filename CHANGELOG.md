@@ -875,3 +875,236 @@ Fix Daily task contrast issues, move teammate identity away from gold, and remov
 - `CHANGELOG.md`
 - `UPDATE_MANIFEST.md`
 - `SOUND_ASSET_SETUP.md`
+
+## v0.5.3 — Hide Join Prompts During Sessions
+
+### Purpose
+Stop Join/Spectate prompts from showing while the player is already actively playing or spectating Dungeon Doors.
+
+### Changes
+- Added a client-side prompt visibility controller.
+- When `state.activeGame == DungeonDoors`, local Join/Spectate ProximityPrompts are disabled.
+- When the player is not in an active Dungeon Doors session, the prompts are re-enabled.
+- The controller runs during normal render updates and immediately after game render payloads.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.5.4 — Room Action Limits, Enemy Turns, and Tile Detail
+
+### Purpose
+Add real room-level limits for Search/Scheme, make combat feel like a turn exchange, and improve room tile variety using safe simple parts.
+
+### Room action limits
+- Search is once per room total, shared by both players.
+- Scheme is once per room total, shared by both players.
+- If one player uses Search, the teammate cannot Search in that same room.
+- If one player uses Scheme, the teammate cannot Scheme in that same room.
+- Search/Scheme limits reset when the next room loads.
+- Trying to use a spent Search/Scheme does not burn the turn.
+
+### Client UI
+- Search/Scheme cards show `USED THIS ROOM` after being spent.
+- Spent room cards are visually muted.
+- Clicking a spent room card only shows feedback instead of sending the action.
+- Visible tile highlight is closer to the room tile size.
+- Invisible click pad remains forgiving but no longer creates a giant visible highlight.
+
+### Combat update
+- Enemies no longer instantly counterattack inside the Strike card.
+- If an enemy survives, the game enters an `Enemy Turn`.
+- Enemy attack resolves as its own scene/event.
+- After the enemy turn, the simulated teammate wait resolves, then your next turn starts.
+
+### Table room detail
+- Added simple block/rectangle details to revealed tiles:
+  - treasure chests
+  - trap spikes
+  - rune/discovery markers
+  - exit frames
+  - start banners
+  - fog slabs on hidden tiles
+  - rotated clutter blocks
+- Uses simple parts only, no fragile model/mesh dependency.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/ServerScriptService/TableRush/Server.server.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.5.5 — Unique Room Layouts
+
+### Purpose
+The table rooms were too samey: same square size, same clutter boxes, same positions, and player tokens clipping into decorations. This update rebuilds the room tile renderer around varied simple part layouts.
+
+### Room layout changes
+- Each room tile now gets deterministic layout metadata from the server.
+- Tiles can render as:
+  - square
+  - wide
+  - tall
+  - thin
+  - split
+  - alcove
+  - entry
+  - gate
+  - L-shaped
+- Shapes are built from simple connected rectangular parts only.
+- No complex meshes or fragile custom models.
+
+### Decoration changes
+- Decorations are now placed in safe edge/corner zones instead of the token center lane.
+- P1/P2 tokens should no longer clip through the same box setup every room.
+- Clutter count varies per tile.
+- Clutter positions vary per tile.
+- Clutter rotation varies per tile.
+- Clutter sizes vary per tile.
+- Hidden tiles use fog slabs that match the tile size.
+
+### Highlight changes
+- Visible movement glow follows the tile shape more closely.
+- Invisible click pads remain forgiving.
+- The giant visible highlight overlay is avoided.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/ServerScriptService/TableRush/Server.server.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.5.6 — Stable Readable Cards and Door Choice Flow
+
+### Purpose
+Fix action card hover behavior, improve text readability, and remove the unnecessary exit popup card.
+
+### Card fixes
+- Action cards now render inside stable outer slots.
+- Hover scaling affects the whole card together instead of moving text independently.
+- Hover no longer changes card rotation.
+- Neighboring cards should not reflow when a card is hovered or selected.
+- Card text sizes were increased.
+- Action tag labels have more height.
+- Card body text has safer spacing.
+
+### Button/text readability
+- Door/equipment choice buttons are larger.
+- Choice labels are larger and wrapped.
+- Choice panel is wider so route options fit better.
+
+### Exit flow
+- Reaching an exit no longer shows an event popup card.
+- The door/route options are now the event equivalent.
+- Client also ignores accidental Door popup payloads.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/ServerScriptService/TableRush/Server.server.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.5.7 — Delayed Route Roll Resolution
+
+### Purpose
+Fix split route voting so the next room does not load before the Route Roll animation finishes, and clean up overlapping Route Roll text.
+
+### Route Roll timing
+- Split route votes now create `RouteWheel` state and stay on the current room.
+- The winning route is stored as `PendingRouteChoice`.
+- The server sends the Route Roll state first.
+- The next room loads after a short delay matching the client wheel animation.
+- Route choice UI hides while Route Roll is active.
+
+### Route Roll UI
+- Route Roll panel is taller.
+- Wheel sits higher with more breathing room.
+- Result text moved below the wheel.
+- Player/teammate labels moved away from the pie chart.
+- Copy updated to make the roll state clearer.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/ServerScriptService/TableRush/Server.server.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.5.8 — Monster Run Away Movement Rule
+
+### Purpose
+Prevent players from walking deeper into undiscovered rooms while standing on a live monster. If a monster is on the current tile, movement should mean retreating/running away, not exploring forward.
+
+### Changes
+- Added server-side `currentTileHasLiveMonster(state)` helper.
+- `availableMoves(state)` now checks whether the current tile has a live enemy.
+- If a live monster is present:
+  - only revealed neighboring tiles are returned as valid movement options
+  - unrevealed/unknown neighboring tiles are blocked
+  - Step is treated as Run Away behavior
+- If no revealed escape tile exists, the turn is not burned.
+- Invalid movement feedback now explains the monster movement restriction.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/ServerScriptService/TableRush/Server.server.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.5.9 — Orthogonal Themed Room Layouts
+
+### Purpose
+Redo the table room visuals so the room maps feel more deliberate, fluent, and theme-driven while staying simple and safe.
+
+### Layout changes
+- Tile rotations are snapped to 0/90/180/270 degrees.
+- Decoration rotations are snapped to 0/90/180/270 degrees.
+- Removed special Start/Entry shape styling.
+- Removed special Exit/Gate shape styling.
+- Start and Exit tiles now use the same room shape language as other tiles.
+- The final boss vault is the only exception allowed to look like a special exit/vault.
+
+### Room flow changes
+- Added orthogonal corridor slabs between connected revealed/clickable rooms.
+- Corridors use straight or L-shaped 90-degree segments.
+- This makes the map feel like a connected dungeon instead of detached plates.
+
+### Theme prop changes
+- Props now use room theme profiles:
+  - candles/ruins
+  - mist/stones
+  - web/crates
+  - spikes/pressure plates
+  - coins/crates
+  - chains/blocks
+  - water/stones
+  - mushroom blocks
+  - ember blocks
+  - bone slabs
+  - rune stones
+  - metal crates
+  - vault blocks
+  - holy cache
+  - broken floor
+- Props stay mostly cubes/rectangles.
+- No angled clutter.
+- Props stay in edge/corner slots so player tokens do not clip through them.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/ServerScriptService/TableRush/Server.server.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`

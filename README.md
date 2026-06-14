@@ -374,3 +374,69 @@ Likely next steps:
 - Gold is kept for coins/treasure instead of teammate identity
 - Invalid placeholder sounds removed
 - Room/event sound hooks are silent by default until curated Roblox Sound assets are added
+
+
+### v0.5.3 — Hide Join Prompts During Sessions
+
+- Join/Spectate ProximityPrompts are hidden locally while actively playing or spectating Dungeon Doors
+- Prompts return when no active Dungeon Doors table session is being rendered
+- Prevents “Press E” join/spectate prompts from appearing over an active game view
+
+
+### v0.5.4 — Room Action Limits, Enemy Turns, and Tile Detail
+
+- Search is limited to once per room for the whole team
+- Scheme is limited to once per room for the whole team
+- Search/Scheme limits reset in each new room
+- Spent Search/Scheme cards are visually marked and do not burn a turn if clicked
+- Surviving enemies now get a separate Enemy Turn scene instead of instant counterattacks
+- Tile highlights are visually smaller while the invisible click target stays forgiving
+- Room tiles get simple cube/rectangle decor for treasure, traps, discoveries, exits, starts, fog, and clutter
+
+
+### v0.5.5 — Unique Room Layouts
+
+- Room tiles now carry layout metadata for different simple shapes
+- Tiles can be square, wide, tall, thin, split, alcove, entry, gate, or L-shaped
+- Connected simple rectangles create more varied room silhouettes
+- Visible highlights match the room shape more closely
+- Invisible click pads stay forgiving without creating giant visible overlays
+- Decorations move to edge/corner zones so P1/P2 tokens do not clip through them
+- Clutter count, position, rotation, and size vary per tile
+
+
+### v0.5.6 — Stable Readable Cards and Door Choice Flow
+
+- Action cards use a stable outer slot so hover scaling does not move/reflow card text
+- Hover no longer rotates or shifts labels
+- Card text is larger and more readable
+- Choice buttons are larger with better label fit
+- Exit reached no longer triggers an event popup card
+- Door/route options are now the event equivalent when an exit is reached
+
+
+### v0.5.7 — Delayed Route Roll Resolution
+
+- Split route votes now pause on the current room during the wheel animation
+- Winning room/map loads only after the Route Roll finishes
+- Route choice UI hides while Route Roll is active
+- Route Roll text spacing adjusted so labels do not overlap the pie wheel
+
+
+### v0.5.8 — Monster Run Away Movement Rule
+
+- If the player is standing on a live enemy tile, Step becomes Run Away behavior
+- While a monster is present, movement only allows already-revealed neighboring tiles
+- Unknown/undiscovered tiles cannot be entered while a monster is on the current tile
+- The rule is enforced server-side
+- No-escape situations do not burn the turn
+
+
+### v0.5.9 — Orthogonal Themed Room Layouts
+
+- Tile and prop rotations snap to 0/90/180/270 degrees
+- Start and Exit tiles use normal room layout language instead of special entry/exit styles
+- Final boss vault is the only exit-style exception
+- Room layouts are theme-aware instead of arbitrary angled clutter
+- Added simple orthogonal corridors between connected revealed/clickable rooms
+- Props vary by room theme while staying cube/rectangle based

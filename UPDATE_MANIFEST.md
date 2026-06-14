@@ -301,3 +301,113 @@ Exact changed files:
 - CHANGELOG.md
 - UPDATE_MANIFEST.md
 - SOUND_ASSET_SETUP.md
+
+### v0.5.3 — Hide Join Prompts During Sessions
+Patch over v0.5.2:
+- Hides Join/Spectate ProximityPrompts locally while actively playing/spectating Dungeon Doors.
+- Re-enables prompts when no Dungeon Doors session is active.
+
+Exact changed files:
+- Constants.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.5.4 — Room Action Limits, Enemy Turns, and Tile Detail
+Patch over v0.5.3:
+- Adds RoomActions flags to dungeon state.
+- Limits Search and Scheme to once per room for the team.
+- Resets Search/Scheme limits on new room entry.
+- Adds visual spent state to Search/Scheme cards.
+- Adds enemy turn resolution after surviving enemies.
+- Shrinks visible movement highlight while keeping invisible click support.
+- Adds simple block/rectangle room tile details.
+
+Exact changed files:
+- Constants.lua
+- Server.server.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.5.5 — Unique Room Layouts
+Patch over v0.5.4:
+- Adds tile layout metadata in server room creation.
+- Rebuilds client tile rendering with varied simple shapes.
+- Moves decorations away from token positions.
+- Varies clutter count/position/rotation/size.
+- Keeps highlight readable and click pad invisible.
+
+Exact changed files:
+- Constants.lua
+- Server.server.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.5.6 — Stable Readable Cards and Door Choice Flow
+Patch over v0.5.5:
+- Rebuilds action cards around stable outer slots.
+- Makes hover scale whole card content together.
+- Removes hover rotation/text drift.
+- Increases card and choice button text readability.
+- Removes exit reached popup card.
+- Uses door/route options as the exit event.
+
+Exact changed files:
+- Constants.lua
+- Server.server.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.5.7 — Delayed Route Roll Resolution
+Patch over v0.5.6:
+- Adds delayed route loading after split-vote Route Roll.
+- Stores winning route as PendingRouteChoice while the wheel animates.
+- Loads the winning room after the animation delay.
+- Hides route choice buttons during Route Roll.
+- Adjusts Route Roll text/pie chart spacing.
+
+Exact changed files:
+- Constants.lua
+- Server.server.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.5.8 — Monster Run Away Movement Rule
+Patch over v0.5.7:
+- Adds currentTileHasLiveMonster helper.
+- Blocks unrevealed movement from live enemy tiles.
+- Treats Step as Run Away when a monster is on the current tile.
+- Does not burn a turn if there is no revealed escape tile.
+
+Exact changed files:
+- Constants.lua
+- Server.server.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.5.9 — Orthogonal Themed Room Layouts
+Patch over v0.5.8:
+- Snaps tile rotations to 90-degree chunks.
+- Snaps decoration rotations to 90-degree chunks.
+- Removes special entry/exit room styling except final boss vault props.
+- Adds theme-aware prop profiles.
+- Adds orthogonal corridor slabs between connected rooms.
+- Keeps props simple and token-safe.
+
+Exact changed files:
+- Constants.lua
+- Server.server.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
