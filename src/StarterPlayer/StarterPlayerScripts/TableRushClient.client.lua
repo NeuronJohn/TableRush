@@ -51,6 +51,11 @@ local Shell = {
     Ink = C.Ink,
 }
 
+local TeamPurple = Color3.fromRGB(170, 112, 255)
+local DangerRed = Color3.fromRGB(230, 82, 76)
+local TaskDark = Color3.fromRGB(18, 28, 41)
+local TaskButtonDark = Color3.fromRGB(25, 38, 54)
+
 local state = {
     profile = nil,
     tableList = {},
@@ -564,17 +569,87 @@ local backpackLayout = make("UIListLayout", {
 }, backpackList)
 pad(backpackList, 0, 8, 0, 2)
 
-local routeWheelPanel = make("Frame", {Name="RouteWheelPanel", BackgroundColor3=Shell.Panel, BackgroundTransparency=0.04, AnchorPoint=Vector2.new(0.5,0.5), Position=UDim2.fromScale(0.5,0.5), Size=UDim2.fromOffset(280,210), Visible=false, ZIndex=190}, root)
-round(routeWheelPanel, 22)
-stroke(routeWheelPanel, 2, Shell.Gold, 0.25)
-pad(routeWheelPanel, 16,16,14,14)
-local routeWheelTitle = make("TextLabel", {BackgroundTransparency=1, Size=UDim2.new(1,0,0,24), Font=F.Heading, TextSize=18, TextColor3=Shell.Text, Text="Route Tie", ZIndex=191}, routeWheelPanel)
-local routeWheel = make("Frame", {BackgroundColor3=Shell.Blue, AnchorPoint=Vector2.new(0.5,0.5), Position=UDim2.new(0.5,0,0.56,0), Size=UDim2.fromOffset(110,110), Rotation=0, ZIndex=191}, routeWheelPanel)
+local routeRollPanel = make("Frame", {
+    Name = "RouteRollPanel",
+    BackgroundColor3 = Shell.Panel,
+    BackgroundTransparency = 0.04,
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.fromScale(0.5, 0.5),
+    Size = UDim2.fromOffset(330, 258),
+    Visible = false,
+    ZIndex = 190,
+}, root)
+round(routeRollPanel, 24)
+stroke(routeRollPanel, 2, TeamPurple, 0.20)
+pad(routeRollPanel, 18, 18, 14, 14)
+
+local routeRollTitle = make("TextLabel", {
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, 0, 0, 26),
+    Font = F.Heading,
+    TextSize = 19,
+    TextColor3 = Shell.Text,
+    Text = "Route Roll",
+    ZIndex = 191,
+}, routeRollPanel)
+
+local routeRollSubtitle = make("TextLabel", {
+    BackgroundTransparency = 1,
+    Position = UDim2.fromOffset(0, 28),
+    Size = UDim2.new(1, 0, 0, 20),
+    Font = F.Body,
+    TextSize = 11,
+    TextColor3 = Shell.Muted,
+    Text = "Split vote: 50 / 50",
+    ZIndex = 191,
+}, routeRollPanel)
+
+local routeWheel = make("Frame", {
+    BackgroundColor3 = Shell.Text,
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.new(0.5, 0, 0.56, 0),
+    Size = UDim2.fromOffset(136, 136),
+    Rotation = 0,
+    ZIndex = 191,
+}, routeRollPanel)
 round(routeWheel, 999)
-stroke(routeWheel, 4, Shell.Gold, 0.15)
-local routeHalf = make("Frame", {BackgroundColor3=Shell.Gold, AnchorPoint=Vector2.new(1,0.5), Position=UDim2.new(0.5,0,0.5,0), Size=UDim2.fromOffset(55,110), ZIndex=192}, routeWheel)
-round(routeHalf, 999)
-local routeWheelText = make("TextLabel", {BackgroundTransparency=1, AnchorPoint=Vector2.new(0.5,1), Position=UDim2.new(0.5,0,1,-8), Size=UDim2.new(1,-20,0,30), Font=F.Heading, TextSize=12, TextColor3=Shell.Muted, Text="50 / 50 route roll", ZIndex=191}, routeWheelPanel)
+stroke(routeWheel, 4, Shell.Text, 0.35)
+
+local routeGradient = make("UIGradient", {
+    Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Shell.Blue),
+        ColorSequenceKeypoint.new(0.499, Shell.Blue),
+        ColorSequenceKeypoint.new(0.5, TeamPurple),
+        ColorSequenceKeypoint.new(1, TeamPurple),
+    }),
+    Rotation = 90,
+}, routeWheel)
+
+local routeNeedle = make("TextLabel", {
+    BackgroundTransparency = 1,
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.new(0.5, 0, 0.22, 0),
+    Size = UDim2.fromOffset(42, 42),
+    Font = F.Heading,
+    TextSize = 31,
+    TextColor3 = Shell.Text,
+    Text = "▼",
+    ZIndex = 193,
+}, routeRollPanel)
+
+local routeRollText = make("TextLabel", {
+    BackgroundTransparency = 1,
+    AnchorPoint = Vector2.new(0.5, 1),
+    Position = UDim2.new(0.5, 0, 1, -8),
+    Size = UDim2.new(1, -26, 0, 40),
+    Font = F.Heading,
+    TextSize = 12,
+    TextColor3 = Shell.Muted,
+    TextWrapped = true,
+    Text = "Blue = your route. Purple = teammate route.",
+    ZIndex = 191,
+}, routeRollPanel)
+
 
 local dangerFlash = make("Frame", {
     Name = "DangerFlash",
@@ -834,10 +909,7 @@ local function renderDungeonBoard3D(fake)
         glow.Transparency = 0.78
         glow.CanCollide = false
 
-        roomSound.SoundId = atmosphere.Sound or ""
-        if roomSound.SoundId ~= "" and not roomSound.IsPlaying then
-            roomSound:Play()
-        end
+        -- Room ambience is intentionally silent until curated loop assets are added.
 
         local function tileColor(tile, clickable)
             if clickable then return glowColor end
@@ -900,7 +972,7 @@ local function renderDungeonBoard3D(fake)
             end
 
             if fake.PartnerTile == tile.Id then
-                local token2 = part(renderFolder, "PartnerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x + 0.42, 0.62, z + 0.18), Shell.Gold, Enum.Material.SmoothPlastic)
+                local token2 = part(renderFolder, "PartnerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x + 0.42, 0.62, z + 0.18), TeamPurple, Enum.Material.SmoothPlastic)
                 token2.Shape = Enum.PartType.Ball
                 billboard(token2, "P2", UDim2.fromOffset(54, 24), Vector3.new(0, 0.85, 0), Shell.Text)
             end
@@ -920,7 +992,7 @@ local function renderDungeonBoard3D(fake)
             local doorPart = part(renderFolder, "TableDoor_" .. door.Id, Vector3.new(1.55, 0.35, 0.9), base * CFrame.new(dx, 0.55, dz), clickable and glowColor or Color3.fromRGB(75, 58, 44), clickable and Enum.Material.Neon or Enum.Material.Wood)
             doorPart.CanCollide = false
             billboard(doorPart, door.Icon or "↑", UDim2.fromOffset(60, 34), Vector3.new(0, 0.75, 0), clickable and Shell.Text or Shell.Muted)
-            -- Door route choice is handled by the vote UI, not physical arrow blocks.
+            -- Route choice is handled by the UI vote panel, not physical arrow/door blocks.
         end
 
         -- Tiny atmosphere props: cheap primitives, better room vibe than bare cubes.
@@ -1322,9 +1394,9 @@ end
 
 local function taskTierColor(task)
     if task.Tier == "rare" then
-        return C.Purple
+        return TeamPurple
     elseif task.Tier == "hard" then
-        return Shell.Gold
+        return DangerRed
     elseif task.Tier == "medium" then
         return Shell.Green
     end
@@ -1358,7 +1430,7 @@ local function renderDaily()
         local tierColor = taskTierColor(task)
 
         local row = make("Frame", {
-            BackgroundColor3 = Shell.Row,
+            BackgroundColor3 = TaskDark,
             Size = UDim2.new(1, -8, 0, 74),
             LayoutOrder = i,
             ZIndex = 82,
@@ -1427,25 +1499,25 @@ local function renderDaily()
             Size = UDim2.fromOffset(44, 15),
             Font = F.Heading,
             TextSize = 10,
-            TextColor3 = claimed and Shell.Green or tierColor,
+            TextColor3 = claimed and Shell.Green or Color3.fromRGB(208, 224, 238),
             Text = tostring(progress) .. "/" .. tostring(target),
             ZIndex = 84,
         }, row)
 
         local claim = make("TextButton", {
-            BackgroundColor3 = claimed and Color3.fromRGB(28, 48, 44) or (complete and Shell.Gold or Shell.Row2),
+            BackgroundColor3 = claimed and Color3.fromRGB(24, 52, 44) or (complete and Color3.fromRGB(36, 62, 49) or TaskButtonDark),
             AnchorPoint = Vector2.new(1, 0.5),
             Position = UDim2.new(1, -10, 0.5, 0),
             Size = UDim2.fromOffset(104, 46),
             Font = F.Heading,
             TextSize = 12,
-            TextColor3 = claimed and Shell.Green or (complete and Shell.Ink or Shell.Gold),
+            TextColor3 = claimed and Shell.Green or (complete and Color3.fromRGB(220, 255, 232) or Color3.fromRGB(226, 235, 244)),
             Text = claimed and "Claimed" or (complete and "Claim\nReward" or ("+" .. tostring(task.RewardCoins or 0) .. "c\n+" .. tostring(task.RewardTickets or 0) .. " ticket")),
             AutoButtonColor = complete and not claimed,
             ZIndex = 83,
         }, row)
         round(claim, 13)
-        stroke(claim, 1, complete and tierColor or Shell.Border, complete and 0.25 or 0.58)
+        stroke(claim, 1, claimed and Shell.Green or tierColor, complete and 0.22 or 0.50)
 
         claim.Activated:Connect(function()
             if complete and not claimed then
@@ -1493,23 +1565,21 @@ local function showEventPopup(popup)
     end
 
     local soundMap = {
-        Enemy = "rbxassetid://9119499419",
-        Trap = "rbxassetid://9119499419",
-        Treasure = "rbxassetid://9113420778",
-        Discovery = "rbxassetid://9113420778",
-        Combat = "rbxassetid://9119501655",
-        Item = "rbxassetid://9113420778",
-        Victory = "rbxassetid://9113420778",
-        Room = "rbxassetid://9113420778",
-        Door = "rbxassetid://9113420778",
-        Guard = "rbxassetid://9113420778",
-        Scheme = "rbxassetid://9113420778",
+        Enemy = "",
+        Trap = "",
+        Treasure = "",
+        Discovery = "",
+        Combat = "",
+        Item = "",
+        Victory = "",
+        Room = "",
+        Door = "",
+        Guard = "",
+        Scheme = "",
     }
 
-    if soundMap[popup.Kind] then
-        eventSound.SoundId = soundMap[popup.Kind]
-        eventSound:Play()
-    end
+    -- Sound hooks intentionally disabled until curated audio assets are added.
+    -- This prevents invalid asset-type warnings and removes the constant ringing/noise.
 
     if popup.Kind == "Enemy" or popup.Kind == "Trap" or popup.Kind == "Combat" then
         dangerFlash.BackgroundTransparency = 0.62
@@ -1562,11 +1632,13 @@ end
 
 local function renderChoicePanel()
     clear(choiceRow)
+
     local fake = state.fakeState
     if not fake or state.dailyOpen or hub.Visible or state.backpackOpen then
         choicePanel.Visible = false
         return
     end
+
     if fake.PendingEquip then
         choicePanel.Visible = true
         choiceTitle.Text = "Equip " .. tostring(fake.PendingEquip.NewName or "item") .. "?"
@@ -1574,6 +1646,7 @@ local function renderChoicePanel()
         makeChoiceButton({Id = "keep", Icon = "×", Label = "Keep Old"}, 2)
         return
     end
+
     if fake.DoorOptions and #fake.DoorOptions > 0 then
         choicePanel.Visible = true
         choiceTitle.Text = "Vote Next Route"
@@ -1582,6 +1655,7 @@ local function renderChoicePanel()
         end
         return
     end
+
     choicePanel.Visible = false
 end
 
@@ -1683,13 +1757,45 @@ local function renderBackpack()
 end
 
 
+
 local function renderRouteWheel()
     local fake = state.fakeState
-    if not fake or not fake.RouteWheel then routeWheelPanel.Visible = false; return end
-    routeWheelPanel.Visible = true
-    routeWheelText.Text = "Split vote resolved: " .. tostring(fake.RouteWheel.Winner or "?")
-    TweenService:Create(routeWheel, TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 720 + ((fake.RouteWheel.Id or 1) * 45)}):Play()
-    task.delay(1.3, function() routeWheelPanel.Visible = false end)
+    local wheelData = fake and fake.RouteWheel
+
+    if not wheelData then
+        return
+    end
+
+    local wheelId = wheelData.Id or 0
+    if state.lastRouteWheelId == wheelId then
+        return
+    end
+
+    state.lastRouteWheelId = wheelId
+    routeRollPanel.Visible = true
+    routeWheel.Rotation = 0
+    routeRollTitle.Text = "Route Roll"
+    routeRollSubtitle.Text = "Split vote: 50 / 50"
+    routeRollText.Text = "Blue = your route. Purple = teammate route."
+
+    local winnerIsPlayer = wheelData.Winner == wheelData.PlayerChoice
+    local finalRotation = winnerIsPlayer and 1440 or 1620
+
+    TweenService:Create(routeWheel, TweenInfo.new(1.45, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+        Rotation = finalRotation,
+    }):Play()
+
+    task.delay(1.48, function()
+        if state.lastRouteWheelId == wheelId then
+            routeRollText.Text = winnerIsPlayer and "Your route wins." or "Teammate route wins."
+        end
+    end)
+
+    task.delay(2.7, function()
+        if state.lastRouteWheelId == wheelId then
+            routeRollPanel.Visible = false
+        end
+    end)
 end
 
 local function makePlayerMat(ps, index)
@@ -1710,7 +1816,7 @@ local function makePlayerMat(ps, index)
         ZIndex = 31,
     }, playerLayer)
     round(mat, mobile and 14 or 18)
-    stroke(mat, 2, index == 1 and Shell.Blue or Shell.Gold, 0.25)
+    stroke(mat, 2, index == 1 and Shell.Blue or TeamPurple, 0.25)
     pad(mat, 10, 10, 8, 8)
 
     make("TextLabel", {
@@ -1894,7 +2000,7 @@ function renderActions()
         actionLayer.Visible = false
         return
     end
-    if state.fakeState.DoorOptions or state.fakeState.PendingEquip or state.fakeState.MoveOptions or state.fakeState.CanAct == false then
+    if state.fakeState.DoorOptions or state.fakeState.PendingEquip then
         actionLayer.Visible = false
         return
     end
@@ -2000,9 +2106,11 @@ local function renderLayout()
     end
 end
 
+
 local function updateTableCamera()
     local camera = workspace.CurrentCamera
     if not camera then return end
+
     if state.activeGame == Constants.GAME_KEYS.DungeonDoors and state.layout ~= "PortraitBlocked" then
         local map = workspace:FindFirstChild("TableRushMap") or workspace:FindFirstChild("TableRushHall")
         local tableModel = map and map:FindFirstChild("DungeonDoorsTable")
@@ -2013,18 +2121,20 @@ local function updateTableCamera()
             camera.CFrame = top.CFrame * CFrame.new(0, 16.5, 4.5) * CFrame.Angles(math.rad(-76), 0, 0)
         end
     else
-        if camera.CameraType == Enum.CameraType.Scriptable then camera.CameraType = Enum.CameraType.Custom end
+        if camera.CameraType == Enum.CameraType.Scriptable then
+            camera.CameraType = Enum.CameraType.Custom
+        end
     end
 end
 
 function renderAll()
     renderLayout()
+    updateTableCamera()
     if state.layout == "PortraitBlocked" then
         renderFolder:ClearAllChildren()
         return
     end
 
-    updateTableCamera()
     renderTop()
     renderHub()
     renderDaily()

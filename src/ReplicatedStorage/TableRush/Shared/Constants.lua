@@ -1,6 +1,6 @@
 local Constants = {}
 
-Constants.VERSION = "v0.5.0"
+Constants.VERSION = "v0.5.2"
 Constants.EXPERIENCE_NAME = "Table Rush"
 
 Constants.REMOTES_FOLDER = "TableRushRemotes"

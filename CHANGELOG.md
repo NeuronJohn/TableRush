@@ -799,3 +799,79 @@ Make Dungeon Doors a harder, longer, more replayable adventure loop with more ro
 - `README.md`
 - `CHANGELOG.md`
 - `UPDATE_MANIFEST.md`
+
+## v0.5.1 — Route Roll and Map Polish
+
+### Purpose
+Fix the route resolver and improve the world/table presentation without adding fragile custom assets.
+
+### Route Roll
+- Replaced the bad `Route Tie` name with `Route Roll`.
+- Route Roll only appears when a new split route vote happens.
+- It no longer stays visible or replays on every render/action.
+- Rebuilt the resolver as a 50/50 color-coded wheel:
+  - blue = active player route
+  - gold = teammate route
+- The wheel spins once, announces the winning side, then hides.
+
+### Map and tabletop polish
+- Join/Spectate trigger parts are now invisible and non-colliding.
+- Added safe primitive-only detail:
+  - table trim
+  - inset/rune lines
+  - candles and small flame balls
+  - coin cylinders with simple top labels
+  - crates
+  - mini chest
+  - low arch silhouettes
+  - walkway/floor detail
+  - small lamp posts
+- Kept details simple to avoid fragile formatting or broken meshes.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `src/ServerScriptService/TableRush/WorldBuilder.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.5.2 — Daily Colors, Teammate Purple, and Silent Sound Hooks
+
+### Purpose
+Fix Daily task contrast issues, move teammate identity away from gold, and remove invalid/annoying placeholder sounds.
+
+### Daily UI changes
+- Cleaned up Daily task tier color contrast.
+- Hard tasks now use red instead of gold/yellow.
+- Rare tasks use purple.
+- Medium tasks use green.
+- Easy tasks use blue.
+- Incomplete reward buttons use a safer dark button style.
+- Complete Claim buttons use a readable green success style.
+- Progress counts use readable light text instead of clashing with tier colors.
+
+### Teammate color changes
+- Teammate identity color changed from gold to purple.
+- Route Roll now uses:
+  - blue = active player route
+  - purple = teammate route
+- Teammate mats/tokens use purple.
+- Gold remains reserved for coins, treasure, and reward objects.
+
+### Sound changes
+- Removed invalid placeholder sound asset IDs that caused Studio warnings.
+- Disabled event sound playback by default.
+- Disabled looping room ambience by default.
+- Added `SOUND_ASSET_SETUP.md` with Creator Store search terms and safe sound slot guidance.
+
+### Client stability note
+- Restored the client from the last complete UI/rendering branch before applying v0.5.2 changes, because the packaged v0.5.1 client was missing some render function definitions.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+- `SOUND_ASSET_SETUP.md`

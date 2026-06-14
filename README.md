@@ -352,3 +352,25 @@ Likely next steps:
 - Door route voting UI with split-vote wheel animation
 - Room-specific search and scheme outcome tables
 - More dangerous enemies, traps, counterattacks, and threat pressure
+
+
+### v0.5.1 — Route Roll and Map Polish
+
+- Route disagreement resolver is now Route Roll
+- Route Roll appears only for a new split vote
+- 50/50 route wheel uses blue/gold player color coding
+- Join/Spectate prompt trigger blocks are invisible
+- Table polish adds trim, inset lines, candles, coin props, crates, a mini chest, and arch silhouettes
+- Map polish adds walkway detail, floor accents, and small lamp posts
+
+
+### v0.5.2 — Daily Colors, Teammate Purple, and Silent Sound Hooks
+
+- Daily task color tiers cleaned up for readability
+- Hard/yellow Daily tier changed to red
+- Claim/reward buttons use safer dark backgrounds and readable text
+- Teammate identity color changed from gold to purple
+- Route Roll uses blue vs purple
+- Gold is kept for coins/treasure instead of teammate identity
+- Invalid placeholder sounds removed
+- Room/event sound hooks are silent by default until curated Roblox Sound assets are added

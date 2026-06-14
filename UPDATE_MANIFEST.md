@@ -266,3 +266,38 @@ Exact changed files:
 - README.md
 - CHANGELOG.md
 - UPDATE_MANIFEST.md
+
+### v0.5.1 — Route Roll and Map Polish
+Patch over v0.5.0:
+- Fixes route resolver replay/visibility behavior.
+- Replaces Route Tie with Route Roll.
+- Adds one-time 50/50 color-coded route wheel.
+- Makes Join/Spectate trigger boxes invisible.
+- Adds simple primitive table/map detail.
+
+Exact changed files:
+- Constants.lua
+- TableRushClient.client.lua
+- WorldBuilder.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.5.2 — Daily Colors, Teammate Purple, and Silent Sound Hooks
+Patch over v0.5.1:
+- Fixes Daily task contrast.
+- Changes hard/yellow Daily tier to red.
+- Improves Daily reward/claim button readability.
+- Changes teammate color from gold to purple.
+- Updates Route Roll to blue vs purple.
+- Removes invalid placeholder sound IDs.
+- Disables room/event sounds by default.
+- Adds SOUND_ASSET_SETUP.md.
+
+Exact changed files:
+- Constants.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+- SOUND_ASSET_SETUP.md
