@@ -1,102 +1,320 @@
-# Table Rush v0.1 — Hall + Renderer Lock
+# Table Rush
 
-This is a fresh Table Rush project foundation.
+**Table Rush** is a Roblox tabletop/card-game prototype built with Rojo. The current featured table game is **Dungeon Doors**, a cooperative dungeon board/card game where players move through room tiles, reveal events, fight enemies, collect loot, manage equipment, and progress through a multi-room run.
 
-It is intentionally focused on:
-- the social hall
-- future multi-table structure
-- the Dungeon Doors featured table
-- a client-side board renderer
-- a clean PC / compact / mobile UI harness
+The long-term direction is a social tabletop hub: one Roblox world with multiple table games, quickplay tables, friend-hosted tables, public hosted tables, daily tasks, progression, and future personal table spaces.
 
-It is not the full gameplay loop yet.
+## Current Build
 
-## Current Roblox game identity
+**Current version:** `v0.3.0`
 
-**Table Rush** is the social Roblox experience.
+Current core features:
 
-Inside it are table games. The first table game is:
+- Open Table Rush world with interactive table points
+- Dungeon Doors as the first playable table game
+- Quick Play and Spectate flow
+- Scrollable Play menu structure for:
+  - game-made quickplay tables
+  - friends’ hosted tables
+  - public hosted tables
+- Server-owned gameplay state
+- Room/tile movement
+- Center-screen movement and door choices
+- Animated event card pop-ups
+- Backpack and equipment system
+- Seeded daily tasks with claimable rewards
+- 3D tabletop presentation for players and spectators
 
-**Dungeon Doors** — a 2-player-first dungeon board/card game.
+## Dungeon Doors
 
-## What is included
+Dungeon Doors is the first table game inside Table Rush. It is designed as a cooperative 2-player dungeon board/card game, while still being solo-testable during development.
 
-- Rojo project
-- server-created Table Hall graybox
-- featured Dungeon Doors table
-- join board
-- daily task board
-- reward chest
-- relic shelf
-- personal label unlock area
-- future table slots
-- client-rendered fake Dungeon Doors board state
-- large action cards
-- player mats/chips
-- top phase bar
-- temporary event ticker
-- layout modes:
-  - Desktop
-  - Compact
-  - Mobile
+Current gameplay loop:
 
-## How to run
+1. Join or spectate the Dungeon Doors table.
+2. Use action cards to make decisions.
+3. Move across room tiles.
+4. Reveal events such as enemies, traps, treasure, discoveries, and exits.
+5. Fight enemies with Strike.
+6. Use Search, Shield, Scheme, and Step.
+7. Collect items into a backpack.
+8. Equip weapons, armor, and boots.
+9. Use consumables.
+10. Choose whether to replace existing equipment when finding better gear.
+11. Reach exits and choose the next door/room path.
+12. Progress through a six-room dungeon scaffold.
 
-```bash
-rojo serve
+The teammate flow is represented in the game state. For development testing, the partner currently catches up automatically so the loop can be tested without needing a second active player every time.
+
+## Project Structure
+
+```text
+src/
+  ReplicatedStorage/
+    TableRush/
+      Shared/
+        Constants.lua
+        DungeonDoorsSpec.lua
+        GameCatalog.lua
+        Theme.lua
+        UIStyle.lua
+        Util.lua
+
+  ServerScriptService/
+    TableRush/
+      Server.server.lua
+      WorldBuilder.lua
+
+  StarterPlayer/
+    StarterPlayerScripts/
+      TableRushClient.client.lua
 ```
 
-Then connect from Roblox Studio with the Rojo plugin.
+## Main Systems
 
-## Next chunk after this
+### Server-Owned Gameplay
 
-v0.2 should add the first real single-room playable loop:
+The server manages the important gameplay state:
 
-- Dusty Entry room
-- Door Goblin
-- Step / Strike / Search / Shield / Scheme
-- simultaneous lock-in
-- room clear
+- player profile data
+- joined table state
+- Dungeon Doors room state
+- room and tile data
+- player tile position
+- enemy HP
+- trap, treasure, discovery, and exit outcomes
+- backpack inventory
+- equipped items
+- daily task progress
+- reward claiming
 
+The client renders the UI and table presentation from server-sent state.
 
-## v0.1.1 hotfix
+### Client UI
 
-- Added `ReplicatedStorage/TableRush/Shared/Util.lua`.
-- Moved server remote creation before world-building so clients do not infinitely wait if world rendering errors.
-- Added safer client remote waits with clearer warnings.
-- Version bumped to v0.1.1.
+The client handles:
 
+- PC / compact / mobile-landscape layout
+- portrait-phone rotate overlay
+- Play menu
+- Daily task drawer
+- action card hand
+- center choice panel
+- animated event card pop-ups
+- backpack panel
+- player status mats
+- ticker-style event broadcasts
+- 3D tabletop room rendering
 
-## v0.1.2 update
+The mobile direction is landscape-first because Table Rush is a card/table game and needs horizontal space for the board, action hand, and choice UI.
 
-- Map changed from a closed hall feel to a cleaner open table map.
-- Added Join and Spectate proximity prompts to the Dungeon Doors table.
-- Added a bottom Play / Daily dock.
-- Added a compact Daily task panel with task progress and rewards.
-- Improved action card hover using UIScale, tilt, and glow instead of resizing upward.
-- Added Theme.lua compatibility, though old duplicate scripts should still be deleted.
-- Custom/personal tables remain code-minded placeholders for later.
+### Room and Tile System
 
+Dungeon Doors uses room templates with different tile layouts. Tiles can be:
 
-## v0.1.3 update summary
+- Start
+- Enemy
+- Trap
+- Treasure
+- Discovery
+- Exit
 
-See `CHANGELOG.md` and `UPDATE_MANIFEST.md`.
+Current room scaffold:
 
-Short version:
-- Daily panel redesigned to fit better.
-- Daily task rows are larger.
-- Rewards are clearer.
-- Progress bars added.
-- Daily and Play panels no longer sit on top of each other.
-- Update tracking files added for exact future reverts.
+1. Dusty Entry
+2. Crooked Hall
+3. Mimic Storage
+4. Lantern Shrine
+5. Chained Exit
+6. Doorwarden’s Vault
 
+Rooms support different tile counts and branching door choices. The structure is built so procedural rooms, stronger enemy systems, and additional table games can be layered in later.
 
-## v0.1.4 update summary
+### Event Cards
 
-See `CHANGELOG.md` for the full detailed update summary.
+Events are presented through animated card pop-ups. These are used for:
 
-Short version:
-- Daily task cards were actually rebuilt internally.
-- Reward no longer crushes title/description spacing.
-- Progress has its own row.
-- Daily pull-up behavior restored from v0.1.2.
+- room reveals
+- enemy reveals
+- trap triggers
+- treasure finds
+- discoveries
+- door choices
+- item and equipment events
+- run completion events
+
+The goal is to keep gameplay readable for the active player while still giving spectators a clear table presentation.
+
+### Backpack and Equipment
+
+The backpack system supports collected items, equipment slots, and replacement decisions.
+
+Current item categories:
+
+- Weapon
+- Armor
+- Boots
+- Consumable
+- Key/passive
+
+Current equipment slots:
+
+- Weapon
+- Armor
+- Boots
+
+When the player finds an item that would replace an equipped item, the game asks whether to equip the new item or keep the current one.
+
+Example items:
+
+- Rusty Sword
+- Iron Sword
+- Wool Boots
+- Iron Boots
+- Leather Armor
+- Small Potion
+- Brass Key
+
+### Daily Tasks
+
+Daily tasks are generated from a seeded server-side task pool. Players get the same task list on the same UTC date.
+
+The current task pool includes:
+
+- easy teaching tasks
+- medium repeat tasks
+- hard challenge tasks
+- rare high-roll tasks
+
+Completed tasks can be claimed for coins and tickets.
+
+### Play / Table Structure
+
+The Play menu is organized for the future hosted-table system:
+
+1. **Quick Play**  
+   Game-made quickplay tables.
+
+2. **Friends’ Hosted Tables**  
+   Player-hosted tables from friends.
+
+3. **Other Hosted Tables**  
+   Public/player-hosted tables from everyone else.
+
+The hosted table sections are currently UI scaffolding. Full matchmaking, friend filtering, and persistence are future work.
+
+## Skills Demonstrated
+
+This project shows practical Roblox development across gameplay, UI, server-client architecture, and product design.
+
+### Roblox Engineering
+
+- Rojo project structure
+- ModuleScript organization
+- ServerScriptService / ReplicatedStorage / StarterPlayerScripts workflow
+- RemoteEvent communication
+- server-owned gameplay state
+- ProximityPrompt table interactions
+- dynamic Workspace object generation
+- BillboardGui and ScreenGui use
+- responsive Roblox UI layouts
+
+### Gameplay Programming
+
+- action-card gameplay loop
+- room and tile exploration
+- server-validated movement choices
+- branching door choices
+- enemy encounters
+- trap and treasure events
+- item drops
+- backpack inventory
+- equipment slots
+- equipment replacement prompts
+- consumable item usage
+- daily task progression
+- reward claiming
+
+### UI / UX Implementation
+
+- bottom navigation
+- scrollable table selection
+- daily task drawer
+- action card hand
+- center-screen choice UI
+- animated event card pop-ups
+- backpack item panel
+- player status displays
+- event ticker feedback
+- portrait rotate overlay for mobile
+- spectator-friendly table presentation
+
+### Product and Systems Design
+
+- multi-game tabletop hub direction
+- quickplay and hosted-table structure
+- social table-game foundation
+- progression and daily reward loops
+- systems designed for expansion without requiring a full rewrite
+- solo-testable gameplay loop for faster iteration
+
+## Version Milestones
+
+Only major milestones are listed here.
+
+### v0.1.0 — Table Rush Foundation
+
+- Fresh Rojo project
+- Table Rush world foundation
+- Dungeon Doors as the first table game
+- Basic table renderer
+- First Play/Daily UI structure
+- Early table interaction flow
+
+### v0.2.0 — Landscape UI and Table Flow
+
+- Landscape-first phone/tablet direction
+- Portrait rotate overlay
+- Play/Daily bottom-panel structure
+- Scrollable action hand
+- Quick Play / hosted-table menu structure
+- Claimable seeded daily task foundation
+
+### v0.3.0 — Dungeon Doors Gameplay Loop
+
+- Server-owned room/tile gameplay
+- Movement choices
+- Door choices
+- Enemies, traps, treasure, discovery, and exits
+- Animated event cards
+- Backpack and equipment system
+- Equipment replacement decisions
+- Six-room Dungeon Doors scaffold
+
+## Current Limitations
+
+This is still an early prototype.
+
+Known limitations:
+
+- Data is in-memory only; DataStore saving is not implemented yet.
+- True two-player simultaneous lock-in is not finished.
+- Partner catch-up is simulated for solo testing.
+- Hosted table matchmaking is UI-scaffolded but not fully implemented.
+- Friend-hosted/public-hosted table filtering is not connected yet.
+- Final vault/scoring is still placeholder.
+- Visual assets are mostly prototype geometry and UI.
+
+## Next Development Targets
+
+Likely next steps:
+
+- real two-player lock-in flow
+- proper turn/phase timing
+- stronger enemy intents
+- more tile events
+- better room rewards
+- final vault scoring
+- hosted table server structure
+- DataStore profile saving
+- polish pass for table visuals and card art

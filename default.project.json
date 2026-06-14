@@ -14,9 +14,7 @@
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "TableRushClient": {
-          "$path": "src/StarterPlayer/StarterPlayerScripts"
-        }
+        "$path": "src/StarterPlayer/StarterPlayerScripts"
       }
     },
     "Workspace": {

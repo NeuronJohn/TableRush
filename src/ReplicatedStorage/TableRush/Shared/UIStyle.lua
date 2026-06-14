@@ -1,11 +1,11 @@
 local UIStyle = {}
 
 UIStyle.Colors = {
-    Background = Color3.fromRGB(13, 11, 10),
-    TableWood = Color3.fromRGB(70, 44, 27),
-    TableWoodDark = Color3.fromRGB(43, 28, 20),
-    Stone = Color3.fromRGB(92, 88, 78),
-    StoneDark = Color3.fromRGB(47, 47, 43),
+    Background = Color3.fromRGB(8, 12, 18),
+    TableWood = Color3.fromRGB(24, 32, 42),
+    TableWoodDark = Color3.fromRGB(9, 13, 20),
+    Stone = Color3.fromRGB(68, 78, 88),
+    StoneDark = Color3.fromRGB(23, 31, 42),
 
     Text = Color3.fromRGB(246, 239, 219),
     Muted = Color3.fromRGB(178, 166, 137),
@@ -16,10 +16,10 @@ UIStyle.Colors = {
 
     Gold = Color3.fromRGB(245, 190, 72),
     Red = Color3.fromRGB(220, 82, 67),
-    Blue = Color3.fromRGB(87, 165, 240),
-    Green = Color3.fromRGB(89, 197, 129),
+    Blue = Color3.fromRGB(72, 178, 225),
+    Green = Color3.fromRGB(85, 205, 165),
     Purple = Color3.fromRGB(172, 103, 232),
-    Border = Color3.fromRGB(124, 91, 52),
+    Border = Color3.fromRGB(70, 102, 130),
 }
 
 UIStyle.Fonts = {

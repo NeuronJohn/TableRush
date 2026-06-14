@@ -58,7 +58,7 @@ local function makeTable(parent, name, center, color, title, isFeatured)
     model.Name = name
     model.Parent = parent
 
-    local base = part(model, "Base", Vector3.new(12, 2.8, 8), CFrame.new(center + Vector3.new(0, 1.25, 0)), Color3.fromRGB(39, 27, 19), Enum.Material.Wood)
+    local base = part(model, "Base", Vector3.new(12, 2.8, 8), CFrame.new(center + Vector3.new(0, 1.25, 0)), Color3.fromRGB(12, 18, 27), Enum.Material.Wood)
     model.PrimaryPart = base
 
     part(model, "Top", Vector3.new(18, 1, 12), CFrame.new(center + Vector3.new(0, 3, 0)), color, Enum.Material.Wood)
@@ -83,26 +83,23 @@ function WorldBuilder.Build()
     local folder = Instance.new("Folder")
     folder.Name = "TableRushMap"
     folder.Parent = workspace
+    part(folder, "OpenFloor", Vector3.new(150, 1, 120), CFrame.new(0, -0.5, 0), Color3.fromRGB(36, 43, 50), Enum.Material.WoodPlanks)
 
-    workspace.FallenPartsDestroyHeight = -100
+    sign(folder, "MainTitle", "TABLE RUSH", CFrame.new(0, 10, -43), Vector3.new(26, 5.5, 0.35), Color3.fromRGB(19, 28, 40))
+    sign(folder, "SubTitle", "Walk up to a table, spectate, or use Play", CFrame.new(0, 6.5, -42.9), Vector3.new(28, 2.2, 0.3), Color3.fromRGB(15, 22, 32))
 
-    part(folder, "OpenFloor", Vector3.new(150, 1, 120), CFrame.new(0, -0.5, 0), Color3.fromRGB(34, 28, 24), Enum.Material.WoodPlanks)
-
-    sign(folder, "MainTitle", "TABLE RUSH", CFrame.new(0, 10, -43), Vector3.new(26, 5.5, 0.35), Color3.fromRGB(54, 33, 22))
-    sign(folder, "SubTitle", "Walk up to a table, spectate, or use Play", CFrame.new(0, 6.5, -42.9), Vector3.new(28, 2.2, 0.3), Color3.fromRGB(34, 25, 20))
-
-    local dungeon = makeTable(folder, "DungeonDoorsTable", Vector3.new(0, 0, -8), Color3.fromRGB(83, 53, 32), "DUNGEON DOORS\nJoin or Spectate", true)
+    local dungeon = makeTable(folder, "DungeonDoorsTable", Vector3.new(0, 0, -8), Color3.fromRGB(38, 54, 70), "DUNGEON DOORS\nJoin or Spectate", true)
     addPromptPart(dungeon, "JoinDungeonDoors", Vector3.new(-4.8, 3.6, 0), "Join", "Dungeon Doors")
     addPromptPart(dungeon, "SpectateDungeonDoors", Vector3.new(4.8, 3.6, 0), "Spectate", "Dungeon Doors")
 
     makeTable(folder, "FutureTableA", Vector3.new(-34, 0, 18), Color3.fromRGB(48, 48, 56), "FUTURE TABLE\nComing Later", false)
     makeTable(folder, "FutureTableB", Vector3.new(34, 0, 18), Color3.fromRGB(48, 48, 56), "FUTURE TABLE\nComing Later", false)
 
-    sign(folder, "JoinBoard", "JOIN BOARD\nActive tables later", CFrame.new(-44, 5.8, -24) * CFrame.Angles(0, math.rad(25), 0), Vector3.new(11, 5.2, 0.35), Color3.fromRGB(44, 31, 23))
-    sign(folder, "DailyBoard", "DAILY TASKS\nUse the Daily tab for now", CFrame.new(44, 5.8, -24) * CFrame.Angles(0, math.rad(-25), 0), Vector3.new(11, 5.2, 0.35), Color3.fromRGB(44, 31, 23))
-    sign(folder, "RewardChest", "REWARD CHEST\nLater", CFrame.new(44, 4.8, 8) * CFrame.Angles(0, math.rad(-65), 0), Vector3.new(10, 4, 0.35), Color3.fromRGB(38, 29, 24))
-    sign(folder, "RelicShelf", "RELIC SHELF\nBoss cards later", CFrame.new(-44, 4.8, 8) * CFrame.Angles(0, math.rad(65), 0), Vector3.new(10, 4, 0.35), Color3.fromRGB(38, 29, 24))
-    sign(folder, "PersonalLabel", "PERSONAL TABLE LABEL\nBuilt later, code-ready", CFrame.new(0, 4.8, 34), Vector3.new(18, 4.2, 0.35), Color3.fromRGB(54, 33, 22))
+    sign(folder, "JoinBoard", "JOIN BOARD\nActive tables later", CFrame.new(-44, 5.8, -24) * CFrame.Angles(0, math.rad(25), 0), Vector3.new(11, 5.2, 0.35), Color3.fromRGB(18, 27, 39))
+    sign(folder, "DailyBoard", "DAILY TASKS\nUse the Daily tab for now", CFrame.new(44, 5.8, -24) * CFrame.Angles(0, math.rad(-25), 0), Vector3.new(11, 5.2, 0.35), Color3.fromRGB(18, 27, 39))
+    sign(folder, "RewardChest", "REWARD CHEST\nLater", CFrame.new(44, 4.8, 8) * CFrame.Angles(0, math.rad(-65), 0), Vector3.new(10, 4, 0.35), Color3.fromRGB(18, 27, 39))
+    sign(folder, "RelicShelf", "RELIC SHELF\nBoss cards later", CFrame.new(-44, 4.8, 8) * CFrame.Angles(0, math.rad(65), 0), Vector3.new(10, 4, 0.35), Color3.fromRGB(18, 27, 39))
+    sign(folder, "PersonalLabel", "PERSONAL TABLE LABEL\nBuilt later, code-ready", CFrame.new(0, 4.8, 34), Vector3.new(18, 4.2, 0.35), Color3.fromRGB(19, 28, 40))
 
     local spawn = Instance.new("SpawnLocation")
     spawn.Name = "Spawn"
