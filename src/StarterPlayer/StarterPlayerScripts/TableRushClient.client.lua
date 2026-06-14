@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local Constants = require(ReplicatedStorage.TableRush.Shared.Constants)
@@ -563,6 +564,18 @@ local backpackLayout = make("UIListLayout", {
 }, backpackList)
 pad(backpackList, 0, 8, 0, 2)
 
+local routeWheelPanel = make("Frame", {Name="RouteWheelPanel", BackgroundColor3=Shell.Panel, BackgroundTransparency=0.04, AnchorPoint=Vector2.new(0.5,0.5), Position=UDim2.fromScale(0.5,0.5), Size=UDim2.fromOffset(280,210), Visible=false, ZIndex=190}, root)
+round(routeWheelPanel, 22)
+stroke(routeWheelPanel, 2, Shell.Gold, 0.25)
+pad(routeWheelPanel, 16,16,14,14)
+local routeWheelTitle = make("TextLabel", {BackgroundTransparency=1, Size=UDim2.new(1,0,0,24), Font=F.Heading, TextSize=18, TextColor3=Shell.Text, Text="Route Tie", ZIndex=191}, routeWheelPanel)
+local routeWheel = make("Frame", {BackgroundColor3=Shell.Blue, AnchorPoint=Vector2.new(0.5,0.5), Position=UDim2.new(0.5,0,0.56,0), Size=UDim2.fromOffset(110,110), Rotation=0, ZIndex=191}, routeWheelPanel)
+round(routeWheel, 999)
+stroke(routeWheel, 4, Shell.Gold, 0.15)
+local routeHalf = make("Frame", {BackgroundColor3=Shell.Gold, AnchorPoint=Vector2.new(1,0.5), Position=UDim2.new(0.5,0,0.5,0), Size=UDim2.fromOffset(55,110), ZIndex=192}, routeWheel)
+round(routeHalf, 999)
+local routeWheelText = make("TextLabel", {BackgroundTransparency=1, AnchorPoint=Vector2.new(0.5,1), Position=UDim2.new(0.5,0,1,-8), Size=UDim2.new(1,-20,0,30), Font=F.Heading, TextSize=12, TextColor3=Shell.Muted, Text="50 / 50 route roll", ZIndex=191}, routeWheelPanel)
+
 local dangerFlash = make("Frame", {
     Name = "DangerFlash",
     BackgroundColor3 = Color3.fromRGB(190, 35, 35),
@@ -660,6 +673,54 @@ stroke(toast, 1, Shell.Border, 0.45)
 local renderFolder = Instance.new("Folder")
 renderFolder.Name = "ClientDungeonBoardRender"
 renderFolder.Parent = workspace
+
+local function findClickableAncestor(instance)
+    local node = instance
+    while node and node ~= renderFolder do
+        if node:GetAttribute("TableRushClickable") == true then
+            return node
+        end
+        node = node.Parent
+    end
+    return nil
+end
+
+local function handleTableInput(screenPosition)
+    if state.layout == "PortraitBlocked" or state.dailyOpen or hub.Visible or state.backpackOpen then
+        return
+    end
+    if state.activeGame ~= Constants.GAME_KEYS.DungeonDoors or not state.fakeState then
+        return
+    end
+
+    local camera = workspace.CurrentCamera
+    if not camera then return end
+
+    local ray = camera:ViewportPointToRay(screenPosition.X, screenPosition.Y)
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Include
+    params.FilterDescendantsInstances = {renderFolder}
+    params.IgnoreWater = true
+
+    local result = workspace:Raycast(ray.Origin, ray.Direction * 600, params)
+    if not result or not result.Instance then return end
+
+    local clickable = findClickableAncestor(result.Instance)
+    if not clickable then return end
+
+    local kind = clickable:GetAttribute("TableRushClickKind")
+    local id = clickable:GetAttribute("TableRushClickId")
+    if kind and id then
+        tableClickRemote:FireServer({Kind = kind, Id = id})
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        handleTableInput(input.Position)
+    end
+end)
 
 local function showToast(message)
     toast.Text = tostring(message or "")
@@ -813,16 +874,23 @@ local function renderDungeonBoard3D(fake)
             billboard(p, tile.Revealed and tile.Label or "?", UDim2.fromOffset(118, 32), Vector3.new(0, 0.55, 0), tile.Kind == "Treasure" and Shell.Ink or Shell.Text)
 
             if clickable then
-                local click = Instance.new("ClickDetector")
-                click.MaxActivationDistance = 64
-                click.Parent = p
-                click.MouseClick:Connect(function()
-                    tableClickRemote:FireServer({Kind = "Tile", Id = tile.Id})
-                end)
+                p:SetAttribute("TableRushClickable", true)
+                p:SetAttribute("TableRushClickKind", "Tile")
+                p:SetAttribute("TableRushClickId", tile.Id)
 
-                local ring = part(renderFolder, "TileGlow_" .. tile.Id, Vector3.new(2.55, 0.08, 1.85), base * CFrame.new(x, 0.42, z), glowColor, Enum.Material.Neon)
-                ring.Transparency = 0.55
+                local ring = part(renderFolder, "TileGlow_" .. tile.Id, Vector3.new(3.15, 0.12, 2.35), base * CFrame.new(x, 0.42, z), glowColor, Enum.Material.Neon)
+                ring.Transparency = 0.45
                 ring.CanCollide = false
+                ring:SetAttribute("TableRushClickable", true)
+                ring:SetAttribute("TableRushClickKind", "Tile")
+                ring:SetAttribute("TableRushClickId", tile.Id)
+
+                local pad = part(renderFolder, "TileClickPad_" .. tile.Id, Vector3.new(4.25, 0.08, 3.25), base * CFrame.new(x, 0.56, z), glowColor, Enum.Material.ForceField)
+                pad.Transparency = 0.72
+                pad.CanCollide = false
+                pad:SetAttribute("TableRushClickable", true)
+                pad:SetAttribute("TableRushClickKind", "Tile")
+                pad:SetAttribute("TableRushClickId", tile.Id)
             end
 
             if fake.PlayerTile == tile.Id then
@@ -852,14 +920,7 @@ local function renderDungeonBoard3D(fake)
             local doorPart = part(renderFolder, "TableDoor_" .. door.Id, Vector3.new(1.55, 0.35, 0.9), base * CFrame.new(dx, 0.55, dz), clickable and glowColor or Color3.fromRGB(75, 58, 44), clickable and Enum.Material.Neon or Enum.Material.Wood)
             doorPart.CanCollide = false
             billboard(doorPart, door.Icon or "↑", UDim2.fromOffset(60, 34), Vector3.new(0, 0.75, 0), clickable and Shell.Text or Shell.Muted)
-            if clickable then
-                local click = Instance.new("ClickDetector")
-                click.MaxActivationDistance = 64
-                click.Parent = doorPart
-                click.MouseClick:Connect(function()
-                    tableClickRemote:FireServer({Kind = "Door", Id = door.Id})
-                end)
-            end
+            -- Door route choice is handled by the vote UI, not physical arrow blocks.
         end
 
         -- Tiny atmosphere props: cheap primitives, better room vibe than bare cubes.
@@ -1501,13 +1562,11 @@ end
 
 local function renderChoicePanel()
     clear(choiceRow)
-
     local fake = state.fakeState
     if not fake or state.dailyOpen or hub.Visible or state.backpackOpen then
         choicePanel.Visible = false
         return
     end
-
     if fake.PendingEquip then
         choicePanel.Visible = true
         choiceTitle.Text = "Equip " .. tostring(fake.PendingEquip.NewName or "item") .. "?"
@@ -1515,7 +1574,14 @@ local function renderChoicePanel()
         makeChoiceButton({Id = "keep", Icon = "×", Label = "Keep Old"}, 2)
         return
     end
-
+    if fake.DoorOptions and #fake.DoorOptions > 0 then
+        choicePanel.Visible = true
+        choiceTitle.Text = "Vote Next Route"
+        for i, door in ipairs(fake.DoorOptions) do
+            makeChoiceButton({Id = door.Id, Icon = tostring(i), Label = door.Label or door.Id}, i)
+        end
+        return
+    end
     choicePanel.Visible = false
 end
 
@@ -1617,6 +1683,15 @@ local function renderBackpack()
 end
 
 
+local function renderRouteWheel()
+    local fake = state.fakeState
+    if not fake or not fake.RouteWheel then routeWheelPanel.Visible = false; return end
+    routeWheelPanel.Visible = true
+    routeWheelText.Text = "Split vote resolved: " .. tostring(fake.RouteWheel.Winner or "?")
+    TweenService:Create(routeWheel, TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 720 + ((fake.RouteWheel.Id or 1) * 45)}):Play()
+    task.delay(1.3, function() routeWheelPanel.Visible = false end)
+end
+
 local function makePlayerMat(ps, index)
     local mobile = state.layout == "MobileLandscape"
     local compact = state.layout == "Compact"
@@ -1714,8 +1789,8 @@ end
 local function makeActionCard(action, order)
     local mobile = state.layout == "MobileLandscape"
     local compact = state.layout == "Compact"
-    local w = mobile and 118 or (compact and 132 or 154)
-    local h = mobile and 160 or (compact and 176 or 204)
+    local w = mobile and 108 or (compact and 120 or 138)
+    local h = mobile and 145 or (compact and 158 or 178)
 
     local card = make("TextButton", {
         BackgroundColor3 = C.Card,
@@ -1819,7 +1894,7 @@ function renderActions()
         actionLayer.Visible = false
         return
     end
-    if state.fakeState.CanAct == false or state.fakeState.MoveOptions or state.fakeState.DoorOptions or state.fakeState.PendingEquip then
+    if state.fakeState.DoorOptions or state.fakeState.PendingEquip or state.fakeState.MoveOptions or state.fakeState.CanAct == false then
         actionLayer.Visible = false
         return
     end
@@ -1915,13 +1990,30 @@ local function renderLayout()
         dailyTitle.TextSize = 18
         dailySubtitle.TextSize = 11
 
-        actionLayer.Size = UDim2.fromOffset(960, 270)
-        actionLayer.Position = UDim2.new(0.5, 0, 1, -92)
+        actionLayer.Size = UDim2.fromOffset(860, 220)
+        actionLayer.Position = UDim2.new(0.5, 0, 1, -74)
         actionLayout.Padding = UDim.new(0, 12)
 
         ticker.Size = UDim2.fromOffset(620, 38)
         ticker.Position = UDim2.new(0.5, 0, 1, -286)
         ticker.TextSize = 14
+    end
+end
+
+local function updateTableCamera()
+    local camera = workspace.CurrentCamera
+    if not camera then return end
+    if state.activeGame == Constants.GAME_KEYS.DungeonDoors and state.layout ~= "PortraitBlocked" then
+        local map = workspace:FindFirstChild("TableRushMap") or workspace:FindFirstChild("TableRushHall")
+        local tableModel = map and map:FindFirstChild("DungeonDoorsTable")
+        local top = tableModel and tableModel:FindFirstChild("Top")
+        if top then
+            camera.CameraType = Enum.CameraType.Scriptable
+            camera.FieldOfView = 48
+            camera.CFrame = top.CFrame * CFrame.new(0, 16.5, 4.5) * CFrame.Angles(math.rad(-76), 0, 0)
+        end
+    else
+        if camera.CameraType == Enum.CameraType.Scriptable then camera.CameraType = Enum.CameraType.Custom end
     end
 end
 
@@ -1932,11 +2024,13 @@ function renderAll()
         return
     end
 
+    updateTableCamera()
     renderTop()
     renderHub()
     renderDaily()
     renderPlayerMats()
     renderChoicePanel()
+    renderRouteWheel()
     renderBackpack()
     renderActions()
     if state.fakeState and state.fakeState.EventPopup then

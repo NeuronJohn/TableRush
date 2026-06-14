@@ -232,3 +232,37 @@ Exact changed files:
 - README.md
 - CHANGELOG.md
 - UPDATE_MANIFEST.md
+
+### v0.4.1 — Reliable Table Movement
+Patch over v0.4.0:
+- Replaces ClickDetector movement with client raycast input.
+- Adds click metadata to rendered table parts.
+- Allows direct reachable-tile clicking.
+- Keeps Step as movement helper/highlighter.
+
+Exact changed files:
+- Constants.lua
+- Server.server.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.5.0 — Challenge Adventure Run
+Patch over v0.4.1:
+- Adds 40-room pool.
+- Adds 15 to 18 room run structure.
+- Adds one-action-per-turn logic.
+- Requires Step before tile movement.
+- Adds simulated partner wait.
+- Adds top-down locked camera.
+- Adds door vote UI and split-vote wheel.
+- Adds room-specific Search/Scheme outcome tables.
+
+Exact changed files:
+- Constants.lua
+- Server.server.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md

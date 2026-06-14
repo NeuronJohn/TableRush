@@ -748,3 +748,54 @@ Make Dungeon Doors more interactive and engaging instead of feeling like a flat 
 
 ### Revert instructions
 - Revert to v0.3.0 to remove table-click movement, room atmosphere, danger flash, expanded room pool, and stronger event flow.
+
+## v0.4.1 — Reliable Table Movement
+
+### Purpose
+Fix the v0.4.0 movement issue. Movement now uses client camera raycasting against the rendered table parts instead of fragile ClickDetector-based clicking.
+
+### Changes
+- Added camera raycast table input for mouse and touch.
+- Rendered table parts now carry click metadata.
+- Clicking/tapping glowing tiles sends `TableClick` to the server.
+- Clicking/tapping glowing doors sends `TableClick` to the server.
+- Direct neighbor tiles glow and can be clicked without needing Step first.
+- Step remains as a movement helper/highlighter.
+- Server validates reachable movement before moving.
+- Event popups remain reserved for actual game events, not movement prompts.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/ServerScriptService/TableRush/Server.server.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.5.0 — Challenge Adventure Run
+
+### Purpose
+Make Dungeon Doors a harder, longer, more replayable adventure loop with more rooms, one-action turns, room-specific RNG, table camera lock, and route voting.
+
+### Major changes
+- 15-room standard run.
+- Secret/special discoveries can extend runs up to 18 rooms.
+- 40-room themed room pool.
+- Progressive difficulty weighting.
+- One action per turn.
+- Step required before movement.
+- Simulated partner wait/resolution for solo testing.
+- Locked top-down table camera.
+- Larger movement hit areas.
+- Door route voting UI.
+- Split-vote wheel animation.
+- Room-specific Search and Scheme outcome tables.
+- Stronger enemy/trap/threat pressure.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/ServerScriptService/TableRush/Server.server.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`

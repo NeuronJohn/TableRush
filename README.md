@@ -328,3 +328,27 @@ Likely next steps:
 - hosted table server structure
 - DataStore profile saving
 - polish pass for table visuals and card art
+
+
+### v0.4.1 — Reliable Table Movement
+
+- Replaced fragile movement clicking with camera raycast table input
+- Click/tap glowing tiles directly on the rendered table
+- Movement works with mouse and touch
+- Step helps highlight movement, but direct reachable-tile clicks work too
+- Doors are selected by clicking glowing rendered table doors
+
+
+### v0.5.0 — Challenge Adventure Run
+
+- 15-room standard run with secret/special discoveries extending runs up to 18 rooms
+- 40-room themed room pool
+- Progressive difficulty weighting so later rooms become harder and more dangerous
+- One action per turn
+- Step is required before movement
+- Simulated partner wait/resolution for solo testing
+- Fixed top-down table camera for players and spectators
+- Larger table hit areas for movement
+- Door route voting UI with split-vote wheel animation
+- Room-specific search and scheme outcome tables
+- More dangerous enemies, traps, counterattacks, and threat pressure
