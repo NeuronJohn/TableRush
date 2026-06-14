@@ -1,6 +1,6 @@
 local Constants = {}
 
-Constants.VERSION = "v0.3.0"
+Constants.VERSION = "v0.4.0"
 Constants.EXPERIENCE_NAME = "Table Rush"
 
 Constants.REMOTES_FOLDER = "TableRushRemotes"
@@ -11,6 +11,7 @@ Constants.REMOTES = {
     RequestSpectateGame = "RequestSpectateGame",
     SubmitAction = "SubmitAction",
     SubmitChoice = "SubmitChoice",
+    TableClick = "TableClick",
     BackpackAction = "BackpackAction",
     ClaimDailyTask = "ClaimDailyTask",
     RequestProfile = "RequestProfile",

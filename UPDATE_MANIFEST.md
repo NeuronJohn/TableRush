@@ -214,3 +214,21 @@ Exact changed files:
 - CHANGELOG.md
 - UPDATE_MANIFEST.md
 - README.md
+
+### v0.4.0 — Adventure Engagement + Table-Click Loop
+Patch over v0.3.0:
+- Adds TableClick remote.
+- Uses actual tabletop clicks for movement and doors.
+- Removes normal movement center UI.
+- Adds room atmosphere metadata and rendering.
+- Adds more room types and progressive difficulty weighting.
+- Adds danger flash and sound hooks.
+- Improves action hand clipping/hover behavior.
+
+Exact changed files:
+- Constants.lua
+- Server.server.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md

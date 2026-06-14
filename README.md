@@ -291,6 +291,16 @@ Only major milestones are listed here.
 - Equipment replacement decisions
 - Six-room Dungeon Doors scaffold
 
+### v0.4.0 — Adventure Engagement Loop
+
+- Clickable table tiles and doors
+- No center movement UI for normal movement
+- Stronger room atmosphere through color, material, props, sounds, and danger flashes
+- More room types with progressive difficulty weighting
+- Event popups reserved for actual game moments
+- Enemy counterattacks, traps, treasure finds, discoveries, and boss-route escalation
+- Improved action hand spacing and hover behavior
+
 ## Current Limitations
 
 This is still an early prototype.

@@ -671,3 +671,80 @@ Start turning Dungeon Doors from a UI test into an actual table/card game loop w
 
 ### Revert instructions
 - Revert to v0.2.2 to remove the room/tile loop, backpack, event cards, and new hand behavior.
+
+## v0.4.0 — Adventure Engagement + Table-Click Loop
+
+### Purpose
+Make Dungeon Doors more interactive and engaging instead of feeling like a flat UI test. Movement and door choice now happen on the actual table, while event cards are reserved for real game moments.
+
+### Interaction changes
+- Removed center-screen movement UI for normal tile movement.
+- Step now highlights reachable tiles directly on the tabletop.
+- Players click glowing table tiles to move.
+- Exit doors glow on the actual tabletop and are clicked directly.
+- Center choice UI remains only for equipment replacement decisions.
+
+### Engagement and atmosphere
+- Added more room types:
+  - Whisper Hall
+  - Black Candle Room
+  - Flooded Crypt
+  - Spider Pantry
+  - plus the existing dungeon rooms and boss vault
+- Added progressive room difficulty weighting.
+- Early rooms are more likely to be easy/medium.
+- Later rooms increasingly pull harder, scarier, and richer rooms.
+- Boss vault remains the late-run endpoint.
+- Rooms now carry atmosphere data:
+  - table color
+  - glow color
+  - material
+  - room sound hook
+  - simple room props
+
+### Vibe and animation
+- Event cards are only for real events:
+  - enemy reveal
+  - trap snap
+  - treasure
+  - discovery
+  - combat
+  - equipment
+  - room reveal
+  - victory
+- No event card for “choose move” or “your turn.”
+- Added danger flash for enemy/trap/combat moments.
+- Added room/event sound hooks.
+- Added more material/color variation to the table and tiles.
+- Added simple prop primitives for room flavor.
+
+### Gameplay changes
+- Enemies now increase Threat when revealed.
+- Enemies counterattack if not defeated.
+- Armor can block counterattacks.
+- Boots can reduce trap damage.
+- Treasure can trigger equipment replacement.
+- Door choices route into different room likelihoods.
+
+### Hand/card fixes
+- Increased action hand frame space.
+- Reduced hover scale to prevent clipping.
+- Kept the fan/straighten hover feel.
+- Hand hides when table tile/door choice is active, so it does not distract.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/ServerScriptService/TableRush/Server.server.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+### Known limitations
+- Sound asset IDs are placeholder Roblox sound hooks and may need final curation.
+- Clickable table parts are client-rendered ClickDetectors for the current prototype.
+- True two-player simultaneous lock-in is still not finished.
+- Room art is still primitive-based, but now has stronger material/color/prop direction.
+
+### Revert instructions
+- Revert to v0.3.0 to remove table-click movement, room atmosphere, danger flash, expanded room pool, and stronger event flow.

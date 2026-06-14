@@ -22,11 +22,12 @@ local joinRemote = remotes:WaitForChild(Constants.REMOTES.RequestJoinGame, 15)
 local spectateRemote = remotes:WaitForChild(Constants.REMOTES.RequestSpectateGame, 15)
 local submitActionRemote = remotes:WaitForChild(Constants.REMOTES.SubmitAction, 15)
 local submitChoiceRemote = remotes:WaitForChild(Constants.REMOTES.SubmitChoice, 15)
+local tableClickRemote = remotes:WaitForChild(Constants.REMOTES.TableClick, 15)
 local backpackActionRemote = remotes:WaitForChild(Constants.REMOTES.BackpackAction, 15)
 local claimDailyTaskRemote = remotes:WaitForChild(Constants.REMOTES.ClaimDailyTask, 15)
 local requestProfile = remotes:WaitForChild(Constants.REMOTES.RequestProfile, 15)
 
-if not clientEvent or not joinRemote or not spectateRemote or not submitActionRemote or not submitChoiceRemote or not backpackActionRemote or not claimDailyTaskRemote or not requestProfile then
+if not clientEvent or not joinRemote or not spectateRemote or not submitActionRemote or not submitChoiceRemote or not tableClickRemote or not backpackActionRemote or not claimDailyTaskRemote or not requestProfile then
     warn("Missing one or more Table Rush remotes. Check server boot.")
     return
 end
@@ -562,6 +563,26 @@ local backpackLayout = make("UIListLayout", {
 }, backpackList)
 pad(backpackList, 0, 8, 0, 2)
 
+local dangerFlash = make("Frame", {
+    Name = "DangerFlash",
+    BackgroundColor3 = Color3.fromRGB(190, 35, 35),
+    BackgroundTransparency = 1,
+    Size = UDim2.fromScale(1, 1),
+    ZIndex = 250,
+}, root)
+
+local roomSound = make("Sound", {
+    Name = "RoomSound",
+    Volume = 0.28,
+    Looped = true,
+}, gui)
+
+local eventSound = make("Sound", {
+    Name = "EventSound",
+    Volume = 0.65,
+    Looped = false,
+}, gui)
+
 
 local playerLayer = make("Frame", {
     Name = "PlayerMats",
@@ -575,7 +596,7 @@ local actionLayer = make("Frame", {
     BackgroundTransparency = 1,
     AnchorPoint = Vector2.new(0.5, 1),
     Position = UDim2.new(0.5, 0, 1, -92),
-    Size = UDim2.fromOffset(930, 250),
+    Size = UDim2.fromOffset(960, 270),
     Visible = false,
     ClipsDescendants = false,
     ZIndex = 35,
@@ -583,8 +604,8 @@ local actionLayer = make("Frame", {
 
 local actionScroll = make("ScrollingFrame", {
     BackgroundTransparency = 1,
-    Position = UDim2.fromOffset(0, 18),
-    Size = UDim2.new(1, 0, 1, -24),
+    Position = UDim2.fromOffset(0, 22),
+    Size = UDim2.new(1, 0, 1, -30),
     CanvasSize = UDim2.fromOffset(0, 0),
     AutomaticCanvasSize = Enum.AutomaticSize.X,
     ScrollingDirection = Enum.ScrollingDirection.X,
@@ -735,8 +756,31 @@ local function renderDungeonBoard3D(fake)
     billboard(boardBase, fake.CurrentRoom.Name, UDim2.fromOffset(220, 46), Vector3.new(0, 1.15, -3.7), Shell.Gold)
 
     if fake.Board and fake.Board.Tiles then
-        local function tileColor(tile)
-            if not tile.Revealed then return Color3.fromRGB(38, 48, 58) end
+        local atmosphere = fake.Board.Atmosphere or {}
+        local function rgb(t, fallback)
+            if type(t) == "table" then
+                return Color3.fromRGB(t[1] or fallback.R * 255, t[2] or fallback.G * 255, t[3] or fallback.B * 255)
+            end
+            return fallback
+        end
+
+        local tableColor = rgb(atmosphere.TableColor, Color3.fromRGB(48, 55, 62))
+        local glowColor = rgb(atmosphere.Glow, Shell.Blue)
+        boardBase.Color = tableColor
+        boardBase.Material = Enum.Material[atmosphere.Material or "Slate"] or Enum.Material.Slate
+
+        local glow = part(renderFolder, "RoomGlow", Vector3.new(15.2, 0.08, 8.9), base * CFrame.new(0, 0.38, 0), glowColor, Enum.Material.Neon)
+        glow.Transparency = 0.78
+        glow.CanCollide = false
+
+        roomSound.SoundId = atmosphere.Sound or ""
+        if roomSound.SoundId ~= "" and not roomSound.IsPlaying then
+            roomSound:Play()
+        end
+
+        local function tileColor(tile, clickable)
+            if clickable then return glowColor end
+            if not tile.Revealed then return Color3.fromRGB(33, 42, 52) end
             if tile.Kind == "Enemy" and not tile.Cleared then return Color3.fromRGB(120, 54, 56) end
             if tile.Kind == "Treasure" then return Shell.Gold end
             if tile.Kind == "Trap" then return Color3.fromRGB(120, 66, 56) end
@@ -745,26 +789,106 @@ local function renderDungeonBoard3D(fake)
             return Color3.fromRGB(70, 78, 84)
         end
 
+        local clickableTileIds = {}
+        if fake.MoveOptions then
+            for _, option in ipairs(fake.MoveOptions) do
+                clickableTileIds[option.Id] = true
+            end
+        end
+
+        local clickableDoorIds = {}
+        if fake.DoorOptions then
+            for _, door in ipairs(fake.DoorOptions) do
+                clickableDoorIds[door.Id] = true
+            end
+        end
+
         for _, tile in ipairs(fake.Board.Tiles) do
             local x = (tile.X or 0) * 2.8 - 4.2
             local z = (tile.Y or 0) * 2.1
-            local p = part(renderFolder, "Tile_" .. tile.Id, Vector3.new(2.25, 0.18, 1.55), base * CFrame.new(x, 0.2, z), tileColor(tile), Enum.Material.Slate)
+            local clickable = clickableTileIds[tile.Id] == true
+            local height = clickable and 0.26 or 0.18
+            local p = part(renderFolder, "Tile_" .. tile.Id, Vector3.new(2.25, height, 1.55), base * CFrame.new(x, 0.22, z), tileColor(tile, clickable), clickable and Enum.Material.Neon or Enum.Material.Slate)
+            p.CanCollide = false
             billboard(p, tile.Revealed and tile.Label or "?", UDim2.fromOffset(118, 32), Vector3.new(0, 0.55, 0), tile.Kind == "Treasure" and Shell.Ink or Shell.Text)
+
+            if clickable then
+                local click = Instance.new("ClickDetector")
+                click.MaxActivationDistance = 64
+                click.Parent = p
+                click.MouseClick:Connect(function()
+                    tableClickRemote:FireServer({Kind = "Tile", Id = tile.Id})
+                end)
+
+                local ring = part(renderFolder, "TileGlow_" .. tile.Id, Vector3.new(2.55, 0.08, 1.85), base * CFrame.new(x, 0.42, z), glowColor, Enum.Material.Neon)
+                ring.Transparency = 0.55
+                ring.CanCollide = false
+            end
 
             if fake.PlayerTile == tile.Id then
                 local token = part(renderFolder, "PlayerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x - 0.42, 0.62, z - 0.18), Shell.Blue, Enum.Material.SmoothPlastic)
+                token.Shape = Enum.PartType.Ball
                 billboard(token, "P1", UDim2.fromOffset(54, 24), Vector3.new(0, 0.85, 0), Shell.Text)
             end
 
             if fake.PartnerTile == tile.Id then
                 local token2 = part(renderFolder, "PartnerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x + 0.42, 0.62, z + 0.18), Shell.Gold, Enum.Material.SmoothPlastic)
+                token2.Shape = Enum.PartType.Ball
                 billboard(token2, "P2", UDim2.fromOffset(54, 24), Vector3.new(0, 0.85, 0), Shell.Text)
             end
 
             if tile.Kind == "Enemy" and not tile.Cleared and tile.Revealed then
-                local enemy = part(renderFolder, "Enemy_" .. tile.Id, Vector3.new(0.78, 0.7, 0.78), base * CFrame.new(x, 0.7, z + 0.48), Color3.fromRGB(200, 80, 70), Enum.Material.SmoothPlastic)
+                local enemy = part(renderFolder, "Enemy_" .. tile.Id, Vector3.new(0.78, 0.7, 0.78), base * CFrame.new(x, 0.7, z + 0.48), Color3.fromRGB(200, 80, 70), Enum.Material.Neon)
+                enemy.Shape = Enum.PartType.Ball
                 billboard(enemy, tostring(tile.HP or 1) .. " HP", UDim2.fromOffset(72, 24), Vector3.new(0, 0.9, 0), Shell.Text)
             end
+        end
+
+        -- Door markers become clickable on the actual table when an exit is reached.
+        for i, door in ipairs(fake.Board.Doors or {}) do
+            local dx = -2 + ((i - 1) * 2.2)
+            local dz = 3.9
+            local clickable = clickableDoorIds[door.Id] == true
+            local doorPart = part(renderFolder, "TableDoor_" .. door.Id, Vector3.new(1.55, 0.35, 0.9), base * CFrame.new(dx, 0.55, dz), clickable and glowColor or Color3.fromRGB(75, 58, 44), clickable and Enum.Material.Neon or Enum.Material.Wood)
+            doorPart.CanCollide = false
+            billboard(doorPart, door.Icon or "↑", UDim2.fromOffset(60, 34), Vector3.new(0, 0.75, 0), clickable and Shell.Text or Shell.Muted)
+            if clickable then
+                local click = Instance.new("ClickDetector")
+                click.MaxActivationDistance = 64
+                click.Parent = doorPart
+                click.MouseClick:Connect(function()
+                    tableClickRemote:FireServer({Kind = "Door", Id = door.Id})
+                end)
+            end
+        end
+
+        -- Tiny atmosphere props: cheap primitives, better room vibe than bare cubes.
+        local props = fake.Board.Props or {}
+        for i, propName in ipairs(props) do
+            local px = -6.3 + (i - 1) * 1.15
+            local pz = -3.75
+            local color = glowColor
+            local mat = Enum.Material.Neon
+            local size = Vector3.new(0.35, 0.55, 0.35)
+            if propName == "Chests" or propName == "Crates" then
+                color = Color3.fromRGB(94, 64, 40)
+                mat = Enum.Material.Wood
+                size = Vector3.new(0.55, 0.45, 0.45)
+            elseif propName == "Chains" or propName == "Locks" then
+                color = Color3.fromRGB(130, 130, 138)
+                mat = Enum.Material.Metal
+                size = Vector3.new(0.7, 0.25, 0.25)
+            elseif propName == "Water" then
+                color = Color3.fromRGB(30, 95, 120)
+                mat = Enum.Material.Glass
+                size = Vector3.new(0.9, 0.08, 0.5)
+            elseif propName == "Webs" or propName == "Mist" or propName == "Smoke" or propName == "RedFog" then
+                size = Vector3.new(0.95, 0.08, 0.95)
+                mat = Enum.Material.ForceField
+            end
+            local prop = part(renderFolder, "Prop_" .. tostring(i), size, base * CFrame.new(px, 0.62, pz), color, mat)
+            prop.Transparency = (propName == "Mist" or propName == "Smoke" or propName == "RedFog" or propName == "Webs") and 0.55 or 0
+            prop.CanCollide = false
         end
 
         return
@@ -1287,7 +1411,7 @@ local function eventIcon(kind)
 end
 
 local function showEventPopup(popup)
-    if not popup or popup.Id == state.lastPopupId then
+    if not popup or popup.Id == state.lastPopupId or popup.Kind == "Move" then
         return
     end
     state.lastPopupId = popup.Id
@@ -1299,10 +1423,40 @@ local function showEventPopup(popup)
     eventBody.Text = tostring(popup.Body or "")
 
     eventPopup.Visible = true
-    eventPopup.Rotation = -2
-    eventScale.Scale = 0.84
-    TweenService:Create(eventScale, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
-    TweenService:Create(eventPopup, TweenInfo.new(0.18), {Rotation = 0}):Play()
+    if popup.Kind == "Enemy" or popup.Kind == "Trap" then
+        eventPopup.Rotation = -6
+        eventScale.Scale = 0.72
+    else
+        eventPopup.Rotation = -2
+        eventScale.Scale = 0.84
+    end
+
+    local soundMap = {
+        Enemy = "rbxassetid://9119499419",
+        Trap = "rbxassetid://9119499419",
+        Treasure = "rbxassetid://9113420778",
+        Discovery = "rbxassetid://9113420778",
+        Combat = "rbxassetid://9119501655",
+        Item = "rbxassetid://9113420778",
+        Victory = "rbxassetid://9113420778",
+        Room = "rbxassetid://9113420778",
+        Door = "rbxassetid://9113420778",
+        Guard = "rbxassetid://9113420778",
+        Scheme = "rbxassetid://9113420778",
+    }
+
+    if soundMap[popup.Kind] then
+        eventSound.SoundId = soundMap[popup.Kind]
+        eventSound:Play()
+    end
+
+    if popup.Kind == "Enemy" or popup.Kind == "Trap" or popup.Kind == "Combat" then
+        dangerFlash.BackgroundTransparency = 0.62
+        TweenService:Create(dangerFlash, TweenInfo.new(0.28), {BackgroundTransparency = 1}):Play()
+    end
+
+    TweenService:Create(eventScale, TweenInfo.new(0.20, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+    TweenService:Create(eventPopup, TweenInfo.new(0.20), {Rotation = 0}):Play()
 
     task.delay(2.4, function()
         if state.lastPopupId == popup.Id then
@@ -1362,24 +1516,7 @@ local function renderChoicePanel()
         return
     end
 
-    local options = nil
-    if fake.MoveOptions and #fake.MoveOptions > 0 then
-        options = fake.MoveOptions
-        choiceTitle.Text = "Choose a Tile"
-    elseif fake.DoorOptions and #fake.DoorOptions > 0 then
-        options = fake.DoorOptions
-        choiceTitle.Text = "Choose a Door"
-    end
-
-    if not options then
-        choicePanel.Visible = false
-        return
-    end
-
-    choicePanel.Visible = true
-    for i, option in ipairs(options) do
-        makeChoiceButton(option, i)
-    end
+    choicePanel.Visible = false
 end
 
 local function renderBackpack()
@@ -1591,7 +1728,7 @@ local function makeActionCard(action, order)
     }, actionScroll)
     round(card, 16)
     local cardStroke = stroke(card, 2, state.selectedAction == action.Key and Shell.Gold or Color3.fromRGB(118, 90, 54), state.selectedAction == action.Key and 0 or 0.18)
-    local cardScale = make("UIScale", { Scale = state.selectedAction == action.Key and 1.025 or 1 }, card)
+    local cardScale = make("UIScale", { Scale = state.selectedAction == action.Key and 1.02 or 1 }, card)
     pad(card, 10, 10, 10, 10)
 
     local iconBox = make("TextLabel", {
@@ -1644,7 +1781,7 @@ local function makeActionCard(action, order)
 
     card.MouseEnter:Connect(function()
         if not mobile then
-            TweenService:Create(cardScale, TweenInfo.new(0.12), {Scale = 1.045}):Play()
+            TweenService:Create(cardScale, TweenInfo.new(0.12), {Scale = 1.035}):Play()
             TweenService:Create(card, TweenInfo.new(0.12), {Rotation = 0}):Play()
             if cardStroke then
                 TweenService:Create(cardStroke, TweenInfo.new(0.12), {Transparency = 0.02, Color = Shell.Gold}):Play()
@@ -1654,7 +1791,7 @@ local function makeActionCard(action, order)
 
     card.MouseLeave:Connect(function()
         if not mobile then
-            TweenService:Create(cardScale, TweenInfo.new(0.12), {Scale = state.selectedAction == action.Key and 1.025 or 1}):Play()
+            TweenService:Create(cardScale, TweenInfo.new(0.12), {Scale = state.selectedAction == action.Key and 1.02 or 1}):Play()
             TweenService:Create(card, TweenInfo.new(0.12), {Rotation = (order - 3) * 1.8}):Play()
             if cardStroke then
                 TweenService:Create(cardStroke, TweenInfo.new(0.12), {Transparency = state.selectedAction == action.Key and 0 or 0.18, Color = state.selectedAction == action.Key and Shell.Gold or Color3.fromRGB(118, 90, 54)}):Play()
@@ -1728,7 +1865,7 @@ local function renderLayout()
         dailyTitle.TextSize = 18
         dailySubtitle.TextSize = 11
 
-        actionLayer.Size = UDim2.fromOffset(math.min(v.X - 20, 700), 210)
+        actionLayer.Size = UDim2.fromOffset(math.min(v.X - 20, 720), 230)
         actionLayer.Position = UDim2.new(0.5, 0, 1, -78)
         actionLayout.Padding = UDim.new(0, 10)
         actionScroll.ScrollBarThickness = 3
@@ -1753,7 +1890,7 @@ local function renderLayout()
         dailyTitle.TextSize = 18
         dailySubtitle.TextSize = 11
 
-        actionLayer.Size = UDim2.fromOffset(math.min(v.X - 34, 820), 230)
+        actionLayer.Size = UDim2.fromOffset(math.min(v.X - 34, 850), 250)
         actionLayer.Position = UDim2.new(0.5, 0, 1, -86)
         actionLayout.Padding = UDim.new(0, 12)
 
@@ -1778,7 +1915,7 @@ local function renderLayout()
         dailyTitle.TextSize = 18
         dailySubtitle.TextSize = 11
 
-        actionLayer.Size = UDim2.fromOffset(930, 250)
+        actionLayer.Size = UDim2.fromOffset(960, 270)
         actionLayer.Position = UDim2.new(0.5, 0, 1, -92)
         actionLayout.Padding = UDim.new(0, 12)
 
