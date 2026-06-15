@@ -1253,76 +1253,102 @@ Fix the status/turn ticker overlapping the action cards and make card hover feel
 - `CHANGELOG.md`
 - `UPDATE_MANIFEST.md`
 
-
-## v0.7.0 — Living Dungeon Strategy Core
-
-### Major direction
-This version removes the fake banking/pouch focus and turns Dungeon Doors into a duo tactical room crawler. The core run is now: 8 exploration rooms, Room 9 boss, optional Room 10 Gold Key Vault, optional Room 11 Secret Death Room.
-
-### Built systems
-- 20 noticeable room templates with room families, traits, objects, entry events, puzzles, monsters, traps, and reward hooks.
-- New room resources: HP, Light, Keys, Supplies, Threat, Relics, Gold Key, Secret Path, Death Saves.
-- Search is now investigation: room objects, traps, chests, bridge repairs, route clues, secret tiles, weaknesses, and usable gear.
-- Scheme is now manipulation: enemy control, puzzle solving, route/room pressure, risky greed, and backfire.
-- Enemy intent decks: monsters have 2-6 actions instead of one generic attack.
-- Enemy turn presentation uses intent text/icons and applies different effects.
-- Candle Scout AI teammate activates after 5 seconds solo and shows its action.
-- Duo combo labels such as Covered Search, Protected Scheme, Covered Attack, and Expose and Strike.
-- Downed/death-save loop: HP can hit 0, Supplies/Bandage/relics can prevent or recover from death.
-- Items now have real tactical identity: weapons, armor, tools, relics, death-prevention items.
-- Player token slots are assigned per tile type so figures avoid objects, enemies, and props better.
-- Optional Gold Key and Secret Room logic added.
-
-### Design rules locked in
-- No pointless variable should stay just because it existed before.
-- Pouch/Bank are not core gameplay anymore.
-- Every room object should give Search/Scheme a reason to exist.
-- Every monster should show intent and behave differently.
-- UI text explains; the board state drives the game.
-
-## v0.8.0 — Real 3D Room Explorer Rebuild
+## v0.8.1 — Rollback to Board Figure Direction
 
 ### Purpose
-Scratch the old small card/tile puzzle approach and replace the active Dungeon Doors feel layer with a real walkable 3D room on the tabletop.
+Reject the v0.8.0 full-avatar physical room branch and restore the good tabletop room/tile direction from v0.6.4.
 
-### Removed / deprecated
-- The action card hand is hidden during Dungeon Doors explorer mode.
-- Scheme is removed as a permanent card/action.
-- Search is no longer a once-per-room generic button.
-- Light/Keys/Supplies are removed from the visible run loop.
-- Old tile-click puzzle movement is no longer the active interaction layer.
+### Direction lock
+- The player should control a miniature board figure, not walk their real Roblox avatar around the dungeon.
+- Rooms should stay as tabletop tiles/mini-rooms with props and strong visual identity.
+- Puzzle objects should be miniature physical board objects placed inside the room/tile world.
+- Future interactions should be proximity/position/object based, but still in the board-game miniature style.
 
 ### Added
-- Physical tabletop room model per player.
-- Actual avatar walking around the tabletop room.
-- Larger tabletop scale and faster movement.
-- Top-down-ish camera following the avatar.
-- Physical objects with ProximityPrompts.
-- Search once per physical object/tile.
-- Interact prompts only when an actual use exists.
-- Collapsed bridge flow:
-  - physical blocker
-  - Search debris
-  - lever appears
-  - Interact lever
-  - bridge planks appear
-  - player crosses with avatar
-- Physical chests:
-  - Interact prompt
-  - animated reward spinner
-  - reward/risk result
-- Physical monsters:
-  - monster model
-  - intent label
-  - Fight prompt
-  - Threat-changing actions
-- Threat obelisk:
-  - Quiet / Uneasy / Hunting / Death Hunt tiers
-  - visible physical danger meter
+- WASD board-figure movement helper for movement phases.
+- WASD attempts to move/select the legal connected board tile in the pressed direction when Move/Run Away is active.
+- No full-avatar explorer code is included.
 
 ### Files changed
 - `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
 - `src/ServerScriptService/TableRush/Server.server.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.8.2 — UI Stability Lock
+
+### Purpose
+Fix the broken, overlapping UI before adding more gameplay. This pass is about making the interface stable, readable, and non-flashing.
+
+### UI rules enforced
+- No text-size flashing during hover.
+- No text-transparency flashing during hover.
+- Text is wrapped with padding.
+- Text/buttons get minimum heights.
+- Cards sit inside stable outer slots.
+- Hover only scales the whole card; the text does not independently resize.
+- Action area gets a padded safe panel.
+- Status ticker gets a padded safe text area.
+- Route/choice buttons are larger and moved into safer space.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.8.3 — Board Interaction + UI Reframe
+
+### Purpose
+Fix the pointless WASD helper, remove generic Scheme, make Interact/context actions matter, and reframe the UI away from tiny cards.
+
+### Gameplay fixes
+- WASD now fires `TableClick` with the chosen legal connected tile.
+- E triggers context interaction:
+  - Fight if on a live enemy tile
+  - Interact if the current tile has an actual object/use
+  - Search if the current tile can be searched
+- Search is now once per tile, team-shared.
+- Teammate cannot search a tile already searched by the player.
+- Scheme is no longer an always-visible command.
+- Interact only appears when the current tile actually supports an object/action.
+- Route/door choices are locked while any revealed monster is alive.
+
+### UI fixes
+- Action area is now a short command bar, not tall cards.
+- Buttons are wider and shorter.
+- No hover scaling/text flashing.
+- Stable padded text inside each command.
+- Ticker moved for the shorter command bar.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/ReplicatedStorage/TableRush/Shared/DungeonDoorsSpec.lua`
+- `src/ServerScriptService/TableRush/Server.server.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
+
+## v0.8.4 — Client Render Hotfix
+
+### Purpose
+Fix the v0.8.3 client crash:
+`Players...TableRushClient:2353: attempt to call a nil value`
+
+### Fixes
+- Restored missing `renderLayout()`.
+- Restored missing `updateTableCamera()`.
+- Added missing `cameraViewport()`.
+- `renderActions(fake)` now falls back to `state.fakeState`.
+- `renderAll()` now calls `renderActions(state.fakeState)`.
+- Added defensive render guard so missing render helpers cannot hard-crash.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
 - `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
 - `README.md`
 - `CHANGELOG.md`

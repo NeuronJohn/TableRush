@@ -3,11 +3,41 @@ local Constants = require(script.Parent.Constants)
 local DungeonDoorsSpec = {}
 
 DungeonDoorsSpec.Actions = {
-    {Key = Constants.ACTIONS.Step, Title = "Step / Run", Icon = "↔", Body = "Move through connected rooms. With a monster here, this becomes Run Away to revealed rooms only.", Tag = "Position"},
-    {Key = Constants.ACTIONS.Strike, Title = "Strike", Icon = "⚔", Body = "Attack the monster in your room. Weapons, Search weakness, and teammate combos can change damage.", Tag = "Combat"},
-    {Key = Constants.ACTIONS.Search, Title = "Search", Icon = "◇", Body = "Investigate the room object: chests, bridges, candles, corpses, locks, clues, traps, or secret paths.", Tag = "Investigate"},
-    {Key = Constants.ACTIONS.Shield, Title = "Shield / Help", Icon = "⬟", Body = "Block enemy intent, cover your partner, reduce backfire, or revive a downed teammate with Supplies.", Tag = "Defense"},
-    {Key = Constants.ACTIONS.Scheme, Title = "Scheme", Icon = "✦", Body = "Manipulate the enemy, room, route, puzzle, or trap. Big payoff, real backfire risk.", Tag = "Tactic"},
+    {
+        Key = Constants.ACTIONS.Step,
+        Title = "Move Figure",
+        Icon = "↔",
+        Body = "Use WASD or click a connected room. Monsters block doors.",
+        Tag = "MOVE",
+    },
+    {
+        Key = Constants.ACTIONS.Strike,
+        Title = "Fight",
+        Icon = "⚔",
+        Body = "Attack the live monster on your figure's tile.",
+        Tag = "COMBAT",
+    },
+    {
+        Key = Constants.ACTIONS.Search,
+        Title = "Search Tile",
+        Icon = "◆",
+        Body = "Inspect this tile once. Team-shared; no repeat search.",
+        Tag = "CLUE",
+    },
+    {
+        Key = Constants.ACTIONS.Interact,
+        Title = "Interact",
+        Icon = "✦",
+        Body = "Use the chest, lever, shrine, trap, clue, or exit here.",
+        Tag = "OBJECT",
+    },
+    {
+        Key = Constants.ACTIONS.Shield,
+        Title = "Brace",
+        Icon = "⬟",
+        Body = "Brace against enemy intent and lower immediate danger.",
+        Tag = "DEFEND",
+    },
 }
 
 DungeonDoorsSpec.FakeState = {

@@ -70,6 +70,42 @@ local state = {
     lastPopupId = nil,
 }
 
+
+-- UIStabilityLock_v082:
+-- Hard rule: no text/button overlap, no text-scale flashing, no UI pieces fighting for the same space.
+local function applyTextSafety(label, textSize, padX, padY)
+    if not label or not label.Parent or (not label:IsA("TextLabel") and not label:IsA("TextButton")) then return end
+    label.TextWrapped = true
+    label.TextTruncate = Enum.TextTruncate.None
+    label.TextScaled = false
+    label.TextSize = textSize or label.TextSize or 14
+    label.LineHeight = 1.05
+    label.ClipsDescendants = true
+    local existing = label:FindFirstChild("UIStabilityPadding")
+    if existing then existing:Destroy() end
+    local pad = Instance.new("UIPadding")
+    pad.Name = "UIStabilityPadding"
+    pad.PaddingLeft = UDim.new(0, padX or 10)
+    pad.PaddingRight = UDim.new(0, padX or 10)
+    pad.PaddingTop = UDim.new(0, padY or 6)
+    pad.PaddingBottom = UDim.new(0, padY or 6)
+    pad.Parent = label
+end
+
+local function applyContainerSafety(frame, padX, padY)
+    if not frame or not frame:IsA("GuiObject") then return end
+    frame.ClipsDescendants = false
+    local existing = frame:FindFirstChild("UIStabilityContainerPadding")
+    if existing then existing:Destroy() end
+    local pad = Instance.new("UIPadding")
+    pad.Name = "UIStabilityContainerPadding"
+    pad.PaddingLeft = UDim.new(0, padX or 8)
+    pad.PaddingRight = UDim.new(0, padX or 8)
+    pad.PaddingTop = UDim.new(0, padY or 8)
+    pad.PaddingBottom = UDim.new(0, padY or 8)
+    pad.Parent = frame
+end
+
 local function viewport()
     return workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
 end
@@ -393,8 +429,8 @@ local choicePanel = make("Frame", {
     BackgroundColor3 = Shell.Panel,
     BackgroundTransparency = 0.02,
     AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.fromScale(0.5, 0.60),
-    Size = UDim2.fromOffset(500, 170),
+    Position = UDim2.fromScale(0.5, 0.42),
+    Size = UDim2.fromOffset(560, 220),
     Visible = false,
     ZIndex = 120,
 }, root)
@@ -718,9 +754,9 @@ local ticker = make("TextLabel", {
     BackgroundTransparency = 0.04,
     AnchorPoint = Vector2.new(0.5, 1),
     Position = UDim2.new(0.5, 0, 1, -286),
-    Size = UDim2.fromOffset(760, 44),
+    Size = UDim2.fromOffset(760, 56),
     Font = F.Heading,
-    TextSize = 15,
+    TextSize = 14,
     TextColor3 = Shell.Text,
     Text = "",
     Visible = false,
@@ -736,7 +772,7 @@ local toast = make("TextLabel", {
     Position = UDim2.new(0.5, 0, 0, 70),
     Size = UDim2.fromOffset(440, 40),
     Font = F.Heading,
-    TextSize = 15,
+    TextSize = 14,
     TextColor3 = Shell.Text,
     Text = "",
     Visible = false,
@@ -803,7 +839,7 @@ local function showToast(message)
     toast.TextTransparency = 0
     toast.BackgroundTransparency = 0.04
     task.delay(2.1, function()
-        TweenService:Create(toast, TweenInfo.new(0.25), {TextTransparency = 1, BackgroundTransparency = 1}):Play()
+        -- v0.8.2 removed text transparency flash
         task.wait(0.3)
         toast.BackgroundTransparency = 0.04
         toast.Visible = false
@@ -818,7 +854,7 @@ local function showTicker(message)
     ticker.BackgroundTransparency = 0.04
     task.delay(2.4, function()
         if ticker.Text == tostring(message) then
-            TweenService:Create(ticker, TweenInfo.new(0.25), {TextTransparency = 1, BackgroundTransparency = 1}):Play()
+            -- v0.8.2 removed text transparency flash
             task.wait(0.3)
             ticker.Visible = false
             ticker.TextTransparency = 0
@@ -889,10 +925,7 @@ local function renderDungeonBoard3D(fake)
 
     local base = top.CFrame * CFrame.new(0, 0.74, 0)
     local boardBase = part(renderFolder, "BoardBase", Vector3.new(14.6, 0.28, 8.4), base, Color3.fromRGB(48, 55, 62), Enum.Material.Slate)
-    billboard(boardBase, fake.CurrentRoom.Name, UDim2.fromOffset(240, 44), Vector3.new(0, 1.15, -3.7), Shell.Gold)
-    if fake.Board and fake.Board.Trait then
-        billboard(boardBase, "TRAIT: " .. tostring(fake.Board.Trait), UDim2.fromOffset(260, 28), Vector3.new(0, 0.82, -3.25), Shell.Text)
-    end
+    billboard(boardBase, fake.CurrentRoom.Name, UDim2.fromOffset(220, 46), Vector3.new(0, 1.15, -3.7), Shell.Gold)
 
     if fake.Board and fake.Board.Tiles then
         local atmosphere = fake.Board.Atmosphere or {}
@@ -1181,8 +1214,8 @@ local function renderDungeonBoard3D(fake)
             local x = (tile.X or 0) * 2.95 - 4.45
             local z = (tile.Y or 0) * 2.18
             local layout = tile.Layout or {}
-            local w = math.clamp(layout.W or 2.0, 1.35, 2.85)
-            local d = math.clamp(layout.D or 1.35, 0.95, 2.10)
+            local w = math.clamp(layout.W or 2.0, 1.35, 2.42)
+            local d = math.clamp(layout.D or 1.35, 0.95, 1.78)
             local rot = ((math.floor(((layout.Rot or 0) + 45) / 90) % 4) * 90)
             local clickable = clickableTileIds[tile.Id] == true
             local material = clickable and Enum.Material.Neon or Enum.Material.SmoothPlastic
@@ -1195,9 +1228,6 @@ local function renderDungeonBoard3D(fake)
             local labelSize = tile.Revealed and UDim2.fromOffset(100, 26) or UDim2.fromOffset(44, 24)
             local labelColor = tile.Kind == "Treasure" and Color3.fromRGB(255, 226, 150) or Shell.Text
             billboard(labelBase, labelText, labelSize, Vector3.new(0, labelYOffset, 0), labelColor)
-            if tile.Revealed and tile.Object then
-                billboard(labelBase, tostring(tile.Object), UDim2.fromOffset(112, 20), Vector3.new(0, 0.48, 0), Shell.Muted)
-            end
 
             if clickable then
                 markClickableOn(tileParts, "Tile", tile.Id)
@@ -1221,16 +1251,14 @@ local function renderDungeonBoard3D(fake)
                 pad:SetAttribute("TableRushClickId", tile.Id)
             end
 
-            local tokenA = layout.TokenA or {-0.30, -0.14}
-            local tokenB = layout.TokenB or {0.30, 0.14}
             if fake.PlayerTile == tile.Id then
-                local token = part(renderFolder, "PlayerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x + (tokenA[1] or -0.30), 0.62, z + (tokenA[2] or -0.14)), Shell.Blue, Enum.Material.SmoothPlastic)
+                local token = part(renderFolder, "PlayerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x - 0.30, 0.62, z - 0.14), Shell.Blue, Enum.Material.SmoothPlastic)
                 token.Shape = Enum.PartType.Ball
                 billboard(token, "P1", UDim2.fromOffset(42, 20), Vector3.new(0, 1.02, 0), Shell.Text)
             end
 
             if fake.PartnerTile == tile.Id then
-                local token2 = part(renderFolder, "PartnerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x + (tokenB[1] or 0.30), 0.62, z + (tokenB[2] or 0.14)), TeamPurple, Enum.Material.SmoothPlastic)
+                local token2 = part(renderFolder, "PartnerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x + 0.30, 0.62, z + 0.14), TeamPurple, Enum.Material.SmoothPlastic)
                 token2.Shape = Enum.PartType.Ball
                 billboard(token2, "P2", UDim2.fromOffset(42, 20), Vector3.new(0, 1.02, 0), Shell.Text)
             end
@@ -1238,7 +1266,7 @@ local function renderDungeonBoard3D(fake)
             if tile.Kind == "Enemy" and not tile.Cleared and tile.Revealed then
                 local enemy = part(renderFolder, "Enemy_" .. tile.Id, Vector3.new(0.78, 0.7, 0.78), base * CFrame.new(x, 0.7, z + 0.48), Color3.fromRGB(200, 80, 70), Enum.Material.Neon)
                 enemy.Shape = Enum.PartType.Ball
-                billboard(enemy, tostring(tile.IntentIcon or "!") .. " " .. tostring(tile.Enemy or "Enemy") .. "\n" .. tostring(tile.HP or 1) .. " HP • " .. tostring(tile.Intent or "Intent"), UDim2.fromOffset(150, 42), Vector3.new(0, 0.96, 0), Shell.Text)
+                billboard(enemy, tostring(tile.HP or 1) .. " HP", UDim2.fromOffset(72, 24), Vector3.new(0, 0.9, 0), Shell.Text)
             end
 
             -- Decorations stay around edges/corners so they do not clip P1/P2 token positions.
@@ -1351,15 +1379,13 @@ local function renderDungeonBoard3D(fake)
     billboard(chest, "CHEST?", UDim2.fromOffset(100, 32), Vector3.new(0, 1.0, 0), Shell.Ink)
 
     local pot = part(renderFolder, "PotMarker", Vector3.new(2.2, 0.28, 1.0), base * CFrame.new(0, 0.35, -3.65), Color3.fromRGB(42, 32, 20), Enum.Material.SmoothPlastic)
-    local res = fake.Resources or {}
-    billboard(pot, "LIGHT " .. tostring(res.Light or 0) .. "  KEYS " .. tostring(res.Keys or 0) .. "\nSUPPLIES " .. tostring(res.Supplies or 0) .. "  THREAT " .. tostring(fake.Threat or 0), UDim2.fromOffset(210, 48), Vector3.new(0, 0.9, 0), Shell.Gold)
+    billboard(pot, "POT " .. tostring(fake.Pot) .. "\nTHREAT " .. tostring(fake.Threat), UDim2.fromOffset(150, 48), Vector3.new(0, 0.9, 0), Shell.Gold)
 end
 
 local function renderTop()
     local fake = state.fakeState
     if state.activeGame == Constants.GAME_KEYS.DungeonDoors and fake then
-        local res = fake.Resources or {}
-        topText.Text = string.format("Room %d/%d • HP %s • Light %s • Keys %s • Supplies %s • Threat %d • %s", fake.RoomIndex or 1, fake.MaxRooms or fake.RoomsToWin or 11, tostring((fake.Players and fake.Players[1] and fake.Players[1].HP) or 0), tostring(res.Light or 0), tostring(res.Keys or 0), tostring(res.Supplies or 0), fake.Threat or res.Threat or 0, fake.Phase or "")
+        topText.Text = string.format("Room %d/%d  •  Pot %s  •  Threat %d  •  %s", fake.RoomIndex, fake.RoomsToWin, Util.formatNumber(fake.Pot), fake.Threat, fake.Phase)
     else
         topText.Text = "Table Rush  •  Choose a table"
     end
@@ -1893,7 +1919,7 @@ end
 local function makeChoiceButton(option, order)
     local button = make("TextButton", {
         BackgroundColor3 = Shell.Row2,
-        Size = UDim2.fromOffset(132, 86),
+        Size = UDim2.fromOffset(156, 104),
         Font = F.Heading,
         TextSize = 24,
         TextColor3 = Shell.Text,
@@ -2131,7 +2157,7 @@ local function makePlayerMat(ps, index)
         TextSize = mobile and 12 or 18,
         TextColor3 = Shell.Gold,
         TextXAlignment = Enum.TextXAlignment.Left,
-        Text = "HP " .. tostring(ps.HP or 0) .. "/" .. tostring(ps.MaxHP or 6),
+        Text = "Pouch " .. tostring(ps.Pouch),
         ZIndex = 32,
     }, mat)
 
@@ -2144,7 +2170,7 @@ local function makePlayerMat(ps, index)
             TextSize = compact and 12 or 15,
             TextColor3 = Shell.Green,
             TextXAlignment = Enum.TextXAlignment.Left,
-            Text = tostring(ps.Status or "Ready"),
+            Text = "Bank " .. tostring(ps.Bank) .. "  •  HP " .. tostring(ps.HP),
             ZIndex = 32,
         }, mat)
 
@@ -2156,7 +2182,7 @@ local function makePlayerMat(ps, index)
             TextSize = compact and 10 or 12,
             TextColor3 = Shell.Muted,
             TextXAlignment = Enum.TextXAlignment.Left,
-            Text = tostring(ps.Zone or "Room") .. "  •  " .. tostring((state.fakeState.PartnerAction and index==2) and ("Chose " .. tostring(state.fakeState.PartnerAction.Title)) or ""),
+            Text = "Keys " .. tostring(ps.Keys) .. "  •  Light " .. tostring(ps.Light) .. "  •  " .. ps.Zone,
             ZIndex = 32,
         }, mat)
     else
@@ -2168,7 +2194,7 @@ local function makePlayerMat(ps, index)
             TextSize = 9,
             TextColor3 = Shell.Muted,
             TextXAlignment = Enum.TextXAlignment.Left,
-            Text = tostring(ps.Status or "Ready") .. " • " .. tostring(ps.Zone),
+            Text = "HP " .. tostring(ps.HP) .. " • " .. tostring(ps.Zone),
             ZIndex = 32,
         }, mat)
     end
@@ -2185,271 +2211,178 @@ local function renderPlayerMats()
     end
 end
 
-local function makeActionCard(action, order)
-    local mobile = state.layout == "MobileLandscape"
-    local compact = state.layout == "Compact"
-    local w = mobile and 116 or (compact and 130 or 150)
-    local h = mobile and 154 or (compact and 170 or 190)
-    local roomActions = state.fakeState and state.fakeState.RoomActions or {}
-    local roomSpent = (action.Key == Constants.ACTIONS.Search and roomActions.SearchUsed) or (action.Key == Constants.ACTIONS.Scheme and roomActions.SchemeUsed)
+local function makeActionCard(action, stateData, index, mobile)
+    local w = mobile and 156 or 198
+    local h = mobile and 86 or 98
 
-    -- Stable slot prevents neighboring cards/text from reflowing on hover.
     local slot = make("Frame", {
+        Name = "CommandSlot_" .. tostring(action.Key or index),
+        Size = UDim2.fromOffset(w + 12, h + 12),
         BackgroundTransparency = 1,
-        Size = UDim2.fromOffset(w + 4, h + 8),
-        LayoutOrder = order,
-        ZIndex = 35,
-    }, actionScroll)
+        ClipsDescendants = false,
+        LayoutOrder = index or 1,
+    })
 
-    local card = make("TextButton", {
-        BackgroundColor3 = roomSpent and Color3.fromRGB(122, 116, 100) or C.Card,
+    local button = make("TextButton", {
+        Name = "CommandButton_" .. tostring(action.Key or index),
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.fromScale(0.5, 0.5),
         Size = UDim2.fromOffset(w, h),
+        BackgroundColor3 = action.Disabled and Color3.fromRGB(31, 34, 40) or Color3.fromRGB(18, 27, 40),
         AutoButtonColor = false,
         Text = "",
-        Rotation = (order - 3) * 1.25,
-        ZIndex = 36,
+        ClipsDescendants = true,
+        ZIndex = 30,
     }, slot)
-    round(card, 16)
+    corner(button, 16)
+    stroke(button, action.Disabled and Color3.fromRGB(64, 68, 76) or Color3.fromRGB(88, 112, 145), 1.5, 0.20)
 
-    local cardStroke = stroke(card, 2, roomSpent and Color3.fromRGB(90, 84, 72) or (state.selectedAction == action.Key and Shell.Gold or Color3.fromRGB(118, 90, 54)), roomSpent and 0.35 or (state.selectedAction == action.Key and 0 or 0.18))
-    local cardScale = make("UIScale", {Scale = state.selectedAction == action.Key and 1.045 or 1}, card)
-
-    local content = make("Frame", {
+    local title = make("TextLabel", {
+        Name = "CommandTitle",
         BackgroundTransparency = 1,
-        Size = UDim2.fromScale(1, 1),
-        ZIndex = 37,
-    }, card)
-    pad(content, 10, 10, 10, 10)
+        Position = UDim2.new(0, 12, 0, 8),
+        Size = UDim2.new(1, -24, 0, 26),
+        Font = Enum.Font.GothamBold,
+        TextColor3 = action.Disabled and Color3.fromRGB(150, 154, 164) or Color3.fromRGB(246, 241, 224),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Center,
+        Text = tostring(action.Title or action.Key or "Action"),
+        ZIndex = 32,
+    }, button)
+    applyTextSafety(title, mobile and 12 or 14, 0, 0)
 
-    local iconBox = make("TextLabel", {
-        BackgroundColor3 = C.CardDark,
-        Size = UDim2.new(1, 0, 0, math.floor(h * 0.30)),
-        Font = F.Heading,
-        TextSize = mobile and 25 or 31,
-        TextColor3 = roomSpent and Color3.fromRGB(80, 74, 64) or C.Ink,
-        Text = action.Icon,
-        ZIndex = 37,
-    }, content)
-    round(iconBox, 12)
-
-    make("TextLabel", {
+    local body = make("TextLabel", {
+        Name = "CommandBody",
         BackgroundTransparency = 1,
-        Position = UDim2.fromOffset(0, math.floor(h * 0.35)),
-        Size = UDim2.new(1, 0, 0, 28),
-        Font = F.Heading,
-        TextSize = mobile and 15 or 17,
-        TextColor3 = roomSpent and Color3.fromRGB(80, 74, 64) or C.Ink,
-        Text = action.Title,
-        TextWrapped = true,
-        TextScaled = false,
-        ZIndex = 37,
-    }, content)
-
-    make("TextLabel", {
-        BackgroundTransparency = 1,
-        Position = UDim2.fromOffset(0, math.floor(h * 0.52)),
-        Size = UDim2.new(1, 0, 0, mobile and 48 or 58),
-        Font = F.Body,
-        TextSize = mobile and 11 or 12,
-        TextWrapped = true,
+        Position = UDim2.new(0, 12, 0, 36),
+        Size = UDim2.new(1, -24, 1, -44),
+        Font = Enum.Font.Gotham,
+        TextColor3 = action.Disabled and Color3.fromRGB(126, 132, 144) or Color3.fromRGB(200, 211, 222),
+        TextXAlignment = Enum.TextXAlignment.Left,
         TextYAlignment = Enum.TextYAlignment.Top,
-        TextColor3 = roomSpent and Color3.fromRGB(82, 75, 64) or Color3.fromRGB(70, 53, 38),
-        Text = action.Body,
-        ZIndex = 37,
-    }, content)
+        Text = tostring(action.Body or action.Description or ""),
+        ZIndex = 32,
+    }, button)
+    applyTextSafety(body, mobile and 9 or 10, 0, 0)
 
     local tag = make("TextLabel", {
-        BackgroundColor3 = Color3.fromRGB(54, 42, 29),
-        AnchorPoint = Vector2.new(0.5, 1),
-        Position = UDim2.new(0.5, 0, 1, 0),
-        Size = UDim2.new(1, 0, 0, 26),
-        Font = F.Heading,
-        TextSize = mobile and 10 or 11,
-        TextColor3 = C.Gold,
-        Text = roomSpent and "USED THIS ROOM" or action.Tag,
-        TextWrapped = true,
-        ZIndex = 37,
-    }, content)
-    round(tag, 9)
+        Name = "CommandTag",
+        AnchorPoint = Vector2.new(1, 0),
+        BackgroundColor3 = action.Disabled and Color3.fromRGB(45, 48, 56) or Color3.fromRGB(43, 56, 76),
+        Position = UDim2.new(1, -10, 0, 8),
+        Size = UDim2.fromOffset(mobile and 54 or 64, 24),
+        Font = Enum.Font.GothamBold,
+        TextColor3 = Color3.fromRGB(232, 238, 246),
+        TextXAlignment = Enum.TextXAlignment.Center,
+        TextYAlignment = Enum.TextYAlignment.Center,
+        Text = tostring(action.Tag or "READY"),
+        ZIndex = 33,
+    }, button)
+    corner(tag, 9)
+    applyTextSafety(tag, mobile and 8 or 9, 5, 2)
 
-    card.MouseEnter:Connect(function()
-        if not mobile then
-            card.ZIndex = 45
-            content.ZIndex = 46
-            TweenService:Create(cardScale, TweenInfo.new(0.12), {Scale = 1.105}):Play()
-            if cardStroke then
-                TweenService:Create(cardStroke, TweenInfo.new(0.12), {Transparency = 0.02, Color = roomSpent and Color3.fromRGB(90, 84, 72) or Shell.Gold}):Play()
-            end
-        end
+    button.MouseEnter:Connect(function()
+        if action.Disabled then return end
+        button.BackgroundColor3 = Color3.fromRGB(24, 36, 54)
+    end)
+    button.MouseLeave:Connect(function()
+        button.BackgroundColor3 = action.Disabled and Color3.fromRGB(31, 34, 40) or Color3.fromRGB(18, 27, 40)
+    end)
+    button.MouseButton1Click:Connect(function()
+        if action.Disabled then return end
+        submitActionRemote:FireServer(action.Key)
     end)
 
-    card.MouseLeave:Connect(function()
-        if not mobile then
-            card.ZIndex = 36
-            content.ZIndex = 37
-            TweenService:Create(cardScale, TweenInfo.new(0.12), {Scale = state.selectedAction == action.Key and 1.045 or 1}):Play()
-            if cardStroke then
-                TweenService:Create(cardStroke, TweenInfo.new(0.12), {
-                    Transparency = roomSpent and 0.35 or (state.selectedAction == action.Key and 0 or 0.18),
-                    Color = roomSpent and Color3.fromRGB(90, 84, 72) or (state.selectedAction == action.Key and Shell.Gold or Color3.fromRGB(118, 90, 54)),
-                }):Play()
-            end
-        end
-    end)
-
-    card.Activated:Connect(function()
-        if roomSpent then
-            showTicker(action.Title .. " is already used for this room.")
-            return
-        end
-
-        state.selectedAction = action.Key
-        if state.activeGame == Constants.GAME_KEYS.DungeonDoors and state.renderMode ~= "Spectate" then
-            submitActionRemote:FireServer(action.Key)
-            showTicker(action.Title .. " submitted.")
-        elseif state.renderMode == "Spectate" then
-            showTicker("Spectating only. Join to play actions.")
-        else
-            showTicker(action.Title .. " selected.")
-        end
-        renderActions()
-    end)
+    return slot
 end
 
-function renderActions()
-    clear(actionScroll)
-    if not state.activeGame or not state.fakeState or state.fakeState.ExplorerMode or state.dailyOpen or hub.Visible or state.backpackOpen or state.layout == "PortraitBlocked" then
-        actionLayer.Visible = false
-        return
-    end
-    if state.fakeState.DoorOptions or state.fakeState.PendingEquip then
+function renderActions(fake)
+    fake = fake or state.fakeState
+    clearChildren(actionLayer)
+    if not fake or not fake.ActionCards then
         actionLayer.Visible = false
         return
     end
 
+    local v = cameraViewport()
+    local mobile = v.X < 760
     actionLayer.Visible = true
-    for i, action in ipairs(state.fakeState.ActionCards or {}) do
-        makeActionCard(action, i)
+    actionLayer.AnchorPoint = Vector2.new(0.5, 1)
+    actionLayer.Position = UDim2.new(0.5, 0, 1, -18)
+    actionLayer.Size = mobile and UDim2.fromOffset(math.min(v.X - 24, 720), 122) or UDim2.fromOffset(math.min(v.X - 80, 1040), 134)
+    actionLayer.BackgroundTransparency = 1
+    actionLayer.ClipsDescendants = false
+
+    local panel = make("Frame", {
+        Name = "CommandBarSafePanel",
+        AnchorPoint = Vector2.new(0.5, 1),
+        Position = UDim2.fromScale(0.5, 1),
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundColor3 = Color3.fromRGB(7, 10, 15),
+        BackgroundTransparency = 0.10,
+        ClipsDescendants = false,
+        ZIndex = 20,
+    }, actionLayer)
+    corner(panel, 18)
+    stroke(panel, Color3.fromRGB(70, 86, 108), 1, 0.36)
+    applyContainerSafety(panel, 12, 10)
+
+    local holder = make("Frame", {
+        Name = "CommandHolder",
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 10, 0, 8),
+        Size = UDim2.new(1, -20, 1, -16),
+        ClipsDescendants = false,
+        ZIndex = 21,
+    }, panel)
+
+    make("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        VerticalAlignment = Enum.VerticalAlignment.Center,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, mobile and 4 or 8),
+    }, holder)
+
+    for i, action in ipairs(fake.ActionCards or {}) do
+        local command = makeActionCard(action, fake, i, mobile)
+        command.Parent = holder
     end
+end
+
+
+-- ClientRenderHotfix_v084:
+-- v0.8.3 accidentally called renderLayout/updateTableCamera/cameraViewport without defining them.
+-- These are intentionally defensive and must never hard-crash the client.
+local function cameraViewport()
+    return viewport()
 end
 
 local function renderLayout()
     state.layout = layoutMode()
-    local mode = state.layout
-    local v = viewport()
 
-    local blocked = mode == "PortraitBlocked"
-    rotateOverlay.Visible = blocked
-    topBar.Visible = not blocked
-    bottomDock.Visible = not blocked
-    hub.Visible = hub.Visible and not blocked
-    dailyPanel.Visible = dailyPanel.Visible and not blocked
-    actionLayer.Visible = actionLayer.Visible and not blocked
+    local blocked = state.layout == "PortraitBlocked"
+    if rotateOverlay then
+        rotateOverlay.Visible = blocked
+    end
 
+    -- Keep visible UI out of portrait-blocked mode.
     if blocked then
+        if topBar then topBar.Visible = false end
+        if bottomDock then bottomDock.Visible = false end
+        if hub then hub.Visible = false end
+        if dailyPanel then dailyPanel.Visible = false end
+        if actionLayer then actionLayer.Visible = false end
+        if ticker then ticker.Visible = false end
         return
     end
 
-    if mode == "MobileLandscape" then
-        topBar.Size = UDim2.fromOffset(math.min(v.X - 20, 520), 40)
-        topBar.Position = UDim2.new(0.5, 0, 0, 8)
-        topText.TextSize = 12
+    if topBar then topBar.Visible = true end
+    if bottomDock then bottomDock.Visible = true end
 
-        bottomDock.Size = UDim2.fromOffset(math.min(v.X - 24, 300), 48)
-        bottomDock.Position = UDim2.new(0.5, 0, 1, -8)
-
-        hub.Size = UDim2.fromOffset(math.min(v.X - 20, 390), math.min(v.Y - 94, 322))
-        hub.Position = UDim2.new(0.5, 0, 1, -66)
-        hubTitle.TextSize = 18
-        profilePill.Visible = false
-
-        dailyPanel.Size = UDim2.fromOffset(math.min(v.X - 20, 420), math.min(v.Y - 94, 312))
-        dailyPanel.Position = UDim2.new(0.5, 0, 1, -66)
-        dailyTitle.TextSize = 18
-        dailySubtitle.TextSize = 11
-
-        actionLayer.Size = UDim2.fromOffset(math.min(v.X - 20, 700), 236)
-        actionLayer.Position = UDim2.new(0.5, 0, 1, -78)
-        actionLayout.Padding = UDim.new(0, 4)
-        actionScroll.ScrollBarThickness = 3
-
-        ticker.Size = UDim2.fromOffset(math.min(v.X - 24, 460), 34)
-        ticker.Position = UDim2.new(0.5, 0, 1, -292)
-        ticker.TextSize = 12
-    elseif mode == "Compact" then
-        topBar.Size = UDim2.fromOffset(math.min(v.X - 40, 600), 44)
-        topText.TextSize = 14
-
-        bottomDock.Size = UDim2.fromOffset(310, 52)
-        bottomDock.Position = UDim2.new(0.5, 0, 1, -12)
-
-        hub.Size = UDim2.fromOffset(math.min(v.X - 40, 700), math.min(v.Y - 110, 336))
-        hub.Position = UDim2.new(0.5, 0, 1, -78)
-        hubTitle.TextSize = 20
-        profilePill.Visible = true
-
-        dailyPanel.Size = UDim2.fromOffset(math.min(v.X - 40, 460), 318)
-        dailyPanel.Position = UDim2.new(0.5, 0, 1, -78)
-        dailyTitle.TextSize = 18
-        dailySubtitle.TextSize = 11
-
-        actionLayer.Size = UDim2.fromOffset(math.min(v.X - 34, 820), 244)
-        actionLayer.Position = UDim2.new(0.5, 0, 1, -86)
-        actionLayout.Padding = UDim.new(0, 5)
-
-        ticker.Size = UDim2.fromOffset(math.min(v.X - 34, 520), 36)
-        ticker.Position = UDim2.new(0.5, 0, 1, -276)
-        ticker.TextSize = 13
-    else
-        topBar.Size = UDim2.fromOffset(670, 46)
-        topBar.Position = UDim2.new(0.5, 0, 0, 10)
-        topText.TextSize = 16
-
-        bottomDock.Size = UDim2.fromOffset(310, 52)
-        bottomDock.Position = UDim2.new(0.5, 0, 1, -14)
-
-        hub.Size = UDim2.fromOffset(760, 336)
-        hub.Position = UDim2.new(0.5, 0, 1, -82)
-        hubTitle.TextSize = 20
-        profilePill.Visible = true
-
-        dailyPanel.Size = UDim2.fromOffset(460, 318)
-        dailyPanel.Position = UDim2.new(0.5, 0, 1, -82)
-        dailyTitle.TextSize = 18
-        dailySubtitle.TextSize = 11
-
-        actionLayer.Size = UDim2.fromOffset(850, 232)
-        actionLayer.Position = UDim2.new(0.5, 0, 1, -72)
-        actionLayout.Padding = UDim.new(0, 5)
-
-        ticker.Size = UDim2.fromOffset(760, 44)
-        ticker.Position = UDim2.new(0.5, 0, 1, -328)
-        ticker.TextSize = 14
-    end
-end
-
-
-
-local function updateTablePrompts()
-    local map = workspace:FindFirstChild("TableRushMap") or workspace:FindFirstChild("TableRushHall")
-    local dungeon = map and map:FindFirstChild("DungeonDoorsTable")
-    if not dungeon then
-        return
-    end
-
-    local hidePrompts = state.activeGame == Constants.GAME_KEYS.DungeonDoors
-
-    for _, descendant in ipairs(dungeon:GetDescendants()) do
-        if descendant:IsA("ProximityPrompt") then
-            local promptName = descendant.Name or ""
-            local parentName = descendant.Parent and descendant.Parent.Name or ""
-
-            if string.find(promptName, "JoinDungeonDoors") or string.find(promptName, "SpectateDungeonDoors") or string.find(parentName, "JoinDungeonDoors") or string.find(parentName, "SpectateDungeonDoors") then
-                descendant.Enabled = not hidePrompts
-            end
-        end
+    local v = viewport()
+    if topBar then
+        topBar.Size = UDim2.fromOffset(math.min(v.X - 24, 760), 46)
     end
 end
 
@@ -2457,37 +2390,26 @@ local function updateTableCamera()
     local camera = workspace.CurrentCamera
     if not camera then return end
 
-    if state.activeGame == Constants.GAME_KEYS.DungeonDoors and state.fakeState and state.fakeState.ExplorerMode and state.layout ~= "PortraitBlocked" then
-        local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        camera.CameraType = Enum.CameraType.Scriptable
-        camera.FieldOfView = 46
-        if hrp then
-            local focus = hrp.Position
-            camera.CFrame = CFrame.new(focus + Vector3.new(0, 62, 30), focus + Vector3.new(0, 0, -3))
-        else
-            camera.CFrame = CFrame.new(Vector3.new(0, 76, 24), Vector3.new(0, 7, -8))
-        end
-        return
-    end
-
     if state.activeGame == Constants.GAME_KEYS.DungeonDoors and state.layout ~= "PortraitBlocked" then
         local map = workspace:FindFirstChild("TableRushMap") or workspace:FindFirstChild("TableRushHall")
         local tableModel = map and map:FindFirstChild("DungeonDoorsTable")
         local top = tableModel and tableModel:FindFirstChild("Top")
+
         if top then
             camera.CameraType = Enum.CameraType.Scriptable
             camera.FieldOfView = 48
             camera.CFrame = top.CFrame * CFrame.new(0, 16.5, 4.5) * CFrame.Angles(math.rad(-76), 0, 0)
+            return
         end
-    else
-        if camera.CameraType == Enum.CameraType.Scriptable then
-            camera.CameraType = Enum.CameraType.Custom
-        end
+    end
+
+    if camera.CameraType == Enum.CameraType.Scriptable then
+        camera.CameraType = Enum.CameraType.Custom
     end
 end
 
 function renderAll()
+    if not renderLayout or not updateTableCamera then return end
     renderLayout()
     updateTableCamera()
     if state.layout == "PortraitBlocked" then
@@ -2502,12 +2424,12 @@ function renderAll()
     renderChoicePanel()
     renderRouteWheel()
     renderBackpack()
-    renderActions()
+    renderActions(state.fakeState)
     if state.fakeState and state.fakeState.EventPopup then
         showEventPopup(state.fakeState.EventPopup)
     end
 
-    if state.activeGame == Constants.GAME_KEYS.DungeonDoors and not (state.fakeState and state.fakeState.ExplorerMode) then
+    if state.activeGame == Constants.GAME_KEYS.DungeonDoors then
         renderDungeonBoard3D(state.fakeState)
     else
         renderFolder:ClearAllChildren()
@@ -2579,9 +2501,143 @@ requestProfile:FireServer()
 renderAll()
 
 
--- ExplorerCameraHeartbeat: keeps the physical room camera following the avatar while walking.
+-- BoardFigureKeyboardMovementLock v0.8.3:
+-- WASD now sends actual table movement through the TableClick remote.
+-- E triggers the server's context action. It fights/searches/interacts depending on current tile state.
+local boardMoveCooldown = 0
+local function tryKeyboardBoardMove(direction)
+    if not state.fakeState or not state.fakeState.MoveOptions or not state.fakeState.PlayerTile or os.clock() < boardMoveCooldown then
+        return
+    end
+    boardMoveCooldown = os.clock() + 0.18
+
+    local fake = state.fakeState
+    local current
+    local tiles = fake.Board and fake.Board.Tiles or {}
+    for _, tile in ipairs(tiles) do
+        if tile.Id == fake.PlayerTile then
+            current = tile
+            break
+        end
+    end
+    if not current then return end
+
+    local best, bestScore = nil, -999
+    for _, option in ipairs(fake.MoveOptions or {}) do
+        local target
+        for _, tile in ipairs(tiles) do
+            if tile.Id == option.Id then
+                target = tile
+                break
+            end
+        end
+        if target then
+            local dx = (target.X or 0) - (current.X or 0)
+            local dy = (target.Y or 0) - (current.Y or 0)
+            local score = -999
+            if direction == "W" then score = -dy - math.abs(dx) * 0.35
+            elseif direction == "S" then score = dy - math.abs(dx) * 0.35
+            elseif direction == "A" then score = -dx - math.abs(dy) * 0.35
+            elseif direction == "D" then score = dx - math.abs(dy) * 0.35 end
+            if score > bestScore then
+                bestScore = score
+                best = option
+            end
+        end
+    end
+
+    if best and bestScore > 0 then
+        tableClickRemote:FireServer({Kind = "Tile", Id = best.Id})
+    end
+end
+
+local function contextInteract()
+    if not state.fakeState or state.activeGame ~= Constants.GAME_KEYS.DungeonDoors then return end
+    local fake = state.fakeState
+    local current
+    for _, tile in ipairs((fake.Board and fake.Board.Tiles) or {}) do
+        if tile.Id == fake.PlayerTile then current = tile break end
+    end
+    if current and current.Kind == "Enemy" and current.Revealed and not current.Cleared and (current.HP or 0) > 0 then
+        submitActionRemote:FireServer(Constants.ACTIONS.Strike)
+        return
+    end
+    for _, action in ipairs(fake.ActionCards or {}) do
+        if action.Key == Constants.ACTIONS.Interact then
+            submitActionRemote:FireServer(Constants.ACTIONS.Interact)
+            return
+        end
+    end
+    for _, action in ipairs(fake.ActionCards or {}) do
+        if action.Key == Constants.ACTIONS.Search then
+            submitActionRemote:FireServer(Constants.ACTIONS.Search)
+            return
+        end
+    end
+    showTicker("Nothing to interact with here. Move to a usable tile or Search first.")
+end
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if state.activeGame ~= Constants.GAME_KEYS.DungeonDoors then return end
+    if input.KeyCode == Enum.KeyCode.W then tryKeyboardBoardMove("W")
+    elseif input.KeyCode == Enum.KeyCode.A then tryKeyboardBoardMove("A")
+    elseif input.KeyCode == Enum.KeyCode.S then tryKeyboardBoardMove("S")
+    elseif input.KeyCode == Enum.KeyCode.D then tryKeyboardBoardMove("D")
+    elseif input.KeyCode == Enum.KeyCode.E then contextInteract()
+    end
+end)
+
+
+-- TickerSafety_v082: continuously enforces safe text padding for the main status ticker.
 RunService.RenderStepped:Connect(function()
-    if state.activeGame == Constants.GAME_KEYS.DungeonDoors and state.fakeState and state.fakeState.ExplorerMode then
-        updateTableCamera()
+    if ticker and ticker:IsA("GuiObject") then
+        ticker.ClipsDescendants = true
+        local txt = ticker:IsA("TextLabel") and ticker or ticker:FindFirstChildWhichIsA("TextLabel", true)
+        if txt then
+            applyTextSafety(txt, 14, 14, 6)
+            txt.TextYAlignment = Enum.TextYAlignment.Center
+        end
+    end
+end)
+
+
+-- GlobalUISafetyPass_v082:
+-- Final guardrail: every TextLabel/TextButton gets padding/wrapping and stable size behavior.
+local uiSafetyAccumulator = 0
+RunService.RenderStepped:Connect(function(dt)
+    uiSafetyAccumulator += dt
+    if uiSafetyAccumulator < 0.5 then return end
+    uiSafetyAccumulator = 0
+
+    local roots = {gui}
+    for _, root in ipairs(roots) do
+        if root then
+            for _, obj in ipairs(root:GetDescendants()) do
+                if obj:IsA("TextLabel") then
+                    obj.TextScaled = false
+                    obj.TextWrapped = true
+                    obj.TextTruncate = Enum.TextTruncate.None
+                    if obj.TextSize < 10 then obj.TextSize = 10 end
+                    if obj.AbsoluteSize.Y < 24 then
+                        obj.Size = UDim2.new(obj.Size.X.Scale, obj.Size.X.Offset, obj.Size.Y.Scale, math.max(obj.Size.Y.Offset, 28))
+                    end
+                    if not obj:FindFirstChild("UIStabilityPadding") then
+                        applyTextSafety(obj, obj.TextSize, 8, 4)
+                    end
+                elseif obj:IsA("TextButton") then
+                    obj.TextScaled = false
+                    obj.TextWrapped = true
+                    obj.TextTruncate = Enum.TextTruncate.None
+                    if obj.TextSize < 10 then obj.TextSize = 10 end
+                    if obj.AbsoluteSize.Y < 34 then
+                        obj.Size = UDim2.new(obj.Size.X.Scale, obj.Size.X.Offset, obj.Size.Y.Scale, math.max(obj.Size.Y.Offset, 38))
+                    end
+                    if not obj:FindFirstChild("UIStabilityPadding") then
+                        applyTextSafety(obj, obj.TextSize, 10, 5)
+                    end
+                end
+            end
+        end
     end
 end)

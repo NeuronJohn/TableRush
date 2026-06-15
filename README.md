@@ -489,52 +489,58 @@ Likely next steps:
 - Hovered card rises above neighbors visually without reflowing the hand
 
 
-## v0.7.0 — Living Dungeon Strategy Core
+### v0.8.1 — Rollback to Board Figure Direction
 
-### Major direction
-This version removes the fake banking/pouch focus and turns Dungeon Doors into a duo tactical room crawler. The core run is now: 8 exploration rooms, Room 9 boss, optional Room 10 Gold Key Vault, optional Room 11 Secret Death Room.
+v0.8.0 was rejected because full-avatar room exploration ruined the tabletop room detail.
 
-### Built systems
-- 20 noticeable room templates with room families, traits, objects, entry events, puzzles, monsters, traps, and reward hooks.
-- New room resources: HP, Light, Keys, Supplies, Threat, Relics, Gold Key, Secret Path, Death Saves.
-- Search is now investigation: room objects, traps, chests, bridge repairs, route clues, secret tiles, weaknesses, and usable gear.
-- Scheme is now manipulation: enemy control, puzzle solving, route/room pressure, risky greed, and backfire.
-- Enemy intent decks: monsters have 2-6 actions instead of one generic attack.
-- Enemy turn presentation uses intent text/icons and applies different effects.
-- Candle Scout AI teammate activates after 5 seconds solo and shows its action.
-- Duo combo labels such as Covered Search, Protected Scheme, Covered Attack, and Expose and Strike.
-- Downed/death-save loop: HP can hit 0, Supplies/Bandage/relics can prevent or recover from death.
-- Items now have real tactical identity: weapons, armor, tools, relics, death-prevention items.
-- Player token slots are assigned per tile type so figures avoid objects, enemies, and props better.
-- Optional Gold Key and Secret Room logic added.
-
-### Design rules locked in
-- No pointless variable should stay just because it existed before.
-- Pouch/Bank are not core gameplay anymore.
-- Every room object should give Search/Scheme a reason to exist.
-- Every monster should show intent and behave differently.
-- UI text explains; the board state drives the game.
+This build rolls back to the good v0.6.4 tabletop-room base and locks the new direction:
+- keep the miniature tabletop room/tile world
+- do not use full-size avatar walking inside rooms
+- WASD is for the miniature board figure, not the real avatar
+- keep top-down/table camera feel
+- future puzzles should be miniature physical board objects:
+  - levers
+  - chests
+  - bridges
+  - locked gates
+  - pressure plates
+  - shrines
+  - cracked walls
+  - web cocoons
+- cards/hand UI still need a better replacement later, but the board-room world stays
 
 
-### v0.8.0 — Real 3D Room Explorer Rebuild
+### v0.8.2 — UI Stability Lock
 
-This scratches the small-card/tile prototype direction and starts Dungeon Doors as a walkable physical tabletop room game.
+Hard UI cleanup pass:
+- Rebuilt action card rendering into a stable padded panel.
+- Text no longer animates size/visibility during hover.
+- Hover only scales the whole card container.
+- Cards/buttons get fixed safe slots so they do not reflow into each other.
+- Status/ticker text gets a dedicated safe zone with padding.
+- Global text/button safety pass forces padding, wrapping, and minimum heights.
+- Route/choice buttons are enlarged and moved away from map text.
+- This pass intentionally avoids gameplay changes.
 
-Core changes:
-- Removes the small action-card hand during Dungeon Doors.
-- Scheme is no longer a permanent always-available action.
-- Search is physical-object based and can only be used once per object/tile.
-- Interact only appears when there is an actual physical reason.
-- Player uses their real avatar walking inside a larger tabletop room.
-- Camera follows from a top-down-ish dungeon-board angle.
-- Physical puzzles now exist:
-  - collapsed bridge
-  - searchable debris
-  - revealed lever
-  - repaired bridge planks
-  - physical chest
-  - animated reward result
-  - physical monster with intent
-  - exit door prompt
-- Visible run resource is reduced to Threat.
-- Threat now has named tiers and a physical obelisk in the room.
+
+### v0.8.3 — Board Interaction + UI Reframe
+
+- WASD now sends real board movement through TableClick.
+- E is now context interact:
+  - fights live monster on current tile
+  - uses Interact if the tile has a real object
+  - otherwise searches current tile if Search is available
+- Search is once per tile and shared by the team.
+- Scheme is hidden/removed as a generic always-available action.
+- Interact only appears when the current tile has a real use.
+- Doors/route choices are locked while any revealed monster is alive.
+- Action UI is reframed into a shorter command bar, not tall tiny cards.
+
+
+### v0.8.4 — Client Render Hotfix
+
+- Fixes client crash: `renderLayout()` was missing.
+- Fixes next crash: `updateTableCamera()` was missing.
+- Adds `cameraViewport()` helper used by the command bar.
+- Makes `renderActions()` default to `state.fakeState` if called without an argument.
+- `renderAll()` now passes `state.fakeState` into the command bar renderer.

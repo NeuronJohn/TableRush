@@ -489,11 +489,44 @@ Exact changed files:
 - CHANGELOG.md
 - UPDATE_MANIFEST.md
 
-### v0.7.0 — Living Dungeon Strategy Core
-Patch over v0.6.4:
-- Replaces hollow economy-focused loop with strategic resources.
-- Adds 20 room templates, room traits, objects, puzzles, enemy intent decks, AI teammate, duo combos, death/downed prevention, Gold Key Vault, Secret Death Room, and token slot cleanup.
-- Updates client labels for Light/Keys/Supplies/Threat and enemy intents.
+### v0.8.1 — Rollback to Board Figure Direction
+Patch base:
+- Built from v0.6.4, not v0.8.0.
+- Rejects the full-avatar explorer branch.
+- Restores the tabletop board-room direction.
+- Adds WASD helper for miniature board-figure movement during movement phases.
+
+Exact changed files:
+- Constants.lua
+- TableRushClient.client.lua
+- Server.server.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.8.2 — UI Stability Lock
+Patch over v0.8.1:
+- Rebuilds the action UI into safe padded slots.
+- Removes text-size/text-transparency animation flashes.
+- Adds global text/button padding and min-size enforcement.
+- Moves/expands ticker and route choice UI to reduce overlap.
+
+Exact changed files:
+- Constants.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.8.3 — Board Interaction + UI Reframe
+Patch over v0.8.2:
+- WASD uses TableClick movement.
+- E uses context action.
+- Search is once per tile.
+- Generic Scheme hidden/removed from command list.
+- Interact appears only when useful.
+- Doors locked by live revealed monsters.
+- Tall card UI reframed into stable command bar.
 
 Exact changed files:
 - Constants.lua
@@ -504,17 +537,15 @@ Exact changed files:
 - CHANGELOG.md
 - UPDATE_MANIFEST.md
 
-### v0.8.0 — Real 3D Room Explorer Rebuild
-Patch over v0.7.0:
-- Starts over from the real-room tabletop direction.
-- Hides the old card hand.
-- Removes permanent Scheme.
-- Changes Search to physical object/tile search.
-- Adds actual walkable room, physical prompts, bridge repair, chest reward animation, monster fight prompt, exit prompt, and Threat obelisk.
+### v0.8.4 — Client Render Hotfix
+Patch over v0.8.3:
+- Adds missing renderLayout.
+- Adds missing updateTableCamera.
+- Adds missing cameraViewport.
+- Fixes renderActions being called without fake state.
 
 Exact changed files:
 - Constants.lua
-- Server.server.lua
 - TableRushClient.client.lua
 - README.md
 - CHANGELOG.md
