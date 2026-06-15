@@ -1,6 +1,6 @@
 local Constants = {}
 
-Constants.VERSION = "v0.6.4"
+Constants.VERSION = "v0.8.0"
 Constants.EXPERIENCE_NAME = "Table Rush"
 
 Constants.REMOTES_FOLDER = "TableRushRemotes"
@@ -45,11 +45,10 @@ Constants.DUNGEON_PHASES = {
 }
 
 Constants.ACTIONS = {
-    Step = "Step",
-    Strike = "Strike",
     Search = "Search",
-    Shield = "Shield",
-    Scheme = "Scheme",
+    Interact = "Interact",
+    Fight = "Fight",
+    EnterDoor = "EnterDoor",
 }
 
 Constants.DOOR_TYPES = {

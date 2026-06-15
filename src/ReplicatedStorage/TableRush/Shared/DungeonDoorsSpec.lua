@@ -3,41 +3,11 @@ local Constants = require(script.Parent.Constants)
 local DungeonDoorsSpec = {}
 
 DungeonDoorsSpec.Actions = {
-    {
-        Key = Constants.ACTIONS.Step,
-        Title = "Step",
-        Icon = "↔",
-        Body = "Move zones, approach a door, or avoid danger.",
-        Tag = "Position",
-    },
-    {
-        Key = Constants.ACTIONS.Strike,
-        Title = "Strike",
-        Icon = "⚔",
-        Body = "Damage an enemy in your zone.",
-        Tag = "Combat",
-    },
-    {
-        Key = Constants.ACTIONS.Search,
-        Title = "Search",
-        Icon = "◆",
-        Body = "Inspect or loot chests, doors, and secrets.",
-        Tag = "Treasure",
-    },
-    {
-        Key = Constants.ACTIONS.Shield,
-        Title = "Shield",
-        Icon = "⬟",
-        Body = "Block enemy intent or protect your partner.",
-        Tag = "Defense",
-    },
-    {
-        Key = Constants.ACTIONS.Scheme,
-        Title = "Scheme",
-        Icon = "✦",
-        Body = "Redirect danger, trick traps, or take a greedy play.",
-        Tag = "Trick",
-    },
+    {Key = Constants.ACTIONS.Step, Title = "Step / Run", Icon = "↔", Body = "Move through connected rooms. With a monster here, this becomes Run Away to revealed rooms only.", Tag = "Position"},
+    {Key = Constants.ACTIONS.Strike, Title = "Strike", Icon = "⚔", Body = "Attack the monster in your room. Weapons, Search weakness, and teammate combos can change damage.", Tag = "Combat"},
+    {Key = Constants.ACTIONS.Search, Title = "Search", Icon = "◇", Body = "Investigate the room object: chests, bridges, candles, corpses, locks, clues, traps, or secret paths.", Tag = "Investigate"},
+    {Key = Constants.ACTIONS.Shield, Title = "Shield / Help", Icon = "⬟", Body = "Block enemy intent, cover your partner, reduce backfire, or revive a downed teammate with Supplies.", Tag = "Defense"},
+    {Key = Constants.ACTIONS.Scheme, Title = "Scheme", Icon = "✦", Body = "Manipulate the enemy, room, route, puzzle, or trap. Big payoff, real backfire risk.", Tag = "Tactic"},
 }
 
 DungeonDoorsSpec.FakeState = {

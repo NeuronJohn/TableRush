@@ -488,3 +488,34 @@ Exact changed files:
 - README.md
 - CHANGELOG.md
 - UPDATE_MANIFEST.md
+
+### v0.7.0 — Living Dungeon Strategy Core
+Patch over v0.6.4:
+- Replaces hollow economy-focused loop with strategic resources.
+- Adds 20 room templates, room traits, objects, puzzles, enemy intent decks, AI teammate, duo combos, death/downed prevention, Gold Key Vault, Secret Death Room, and token slot cleanup.
+- Updates client labels for Light/Keys/Supplies/Threat and enemy intents.
+
+Exact changed files:
+- Constants.lua
+- DungeonDoorsSpec.lua
+- Server.server.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
+
+### v0.8.0 — Real 3D Room Explorer Rebuild
+Patch over v0.7.0:
+- Starts over from the real-room tabletop direction.
+- Hides the old card hand.
+- Removes permanent Scheme.
+- Changes Search to physical object/tile search.
+- Adds actual walkable room, physical prompts, bridge repair, chest reward animation, monster fight prompt, exit prompt, and Threat obelisk.
+
+Exact changed files:
+- Constants.lua
+- Server.server.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md

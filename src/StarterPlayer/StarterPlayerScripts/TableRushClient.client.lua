@@ -718,9 +718,9 @@ local ticker = make("TextLabel", {
     BackgroundTransparency = 0.04,
     AnchorPoint = Vector2.new(0.5, 1),
     Position = UDim2.new(0.5, 0, 1, -286),
-    Size = UDim2.fromOffset(620, 38),
+    Size = UDim2.fromOffset(760, 44),
     Font = F.Heading,
-    TextSize = 14,
+    TextSize = 15,
     TextColor3 = Shell.Text,
     Text = "",
     Visible = false,
@@ -736,7 +736,7 @@ local toast = make("TextLabel", {
     Position = UDim2.new(0.5, 0, 0, 70),
     Size = UDim2.fromOffset(440, 40),
     Font = F.Heading,
-    TextSize = 14,
+    TextSize = 15,
     TextColor3 = Shell.Text,
     Text = "",
     Visible = false,
@@ -889,7 +889,10 @@ local function renderDungeonBoard3D(fake)
 
     local base = top.CFrame * CFrame.new(0, 0.74, 0)
     local boardBase = part(renderFolder, "BoardBase", Vector3.new(14.6, 0.28, 8.4), base, Color3.fromRGB(48, 55, 62), Enum.Material.Slate)
-    billboard(boardBase, fake.CurrentRoom.Name, UDim2.fromOffset(220, 46), Vector3.new(0, 1.15, -3.7), Shell.Gold)
+    billboard(boardBase, fake.CurrentRoom.Name, UDim2.fromOffset(240, 44), Vector3.new(0, 1.15, -3.7), Shell.Gold)
+    if fake.Board and fake.Board.Trait then
+        billboard(boardBase, "TRAIT: " .. tostring(fake.Board.Trait), UDim2.fromOffset(260, 28), Vector3.new(0, 0.82, -3.25), Shell.Text)
+    end
 
     if fake.Board and fake.Board.Tiles then
         local atmosphere = fake.Board.Atmosphere or {}
@@ -1178,8 +1181,8 @@ local function renderDungeonBoard3D(fake)
             local x = (tile.X or 0) * 2.95 - 4.45
             local z = (tile.Y or 0) * 2.18
             local layout = tile.Layout or {}
-            local w = math.clamp(layout.W or 2.0, 1.35, 2.42)
-            local d = math.clamp(layout.D or 1.35, 0.95, 1.78)
+            local w = math.clamp(layout.W or 2.0, 1.35, 2.85)
+            local d = math.clamp(layout.D or 1.35, 0.95, 2.10)
             local rot = ((math.floor(((layout.Rot or 0) + 45) / 90) % 4) * 90)
             local clickable = clickableTileIds[tile.Id] == true
             local material = clickable and Enum.Material.Neon or Enum.Material.SmoothPlastic
@@ -1192,6 +1195,9 @@ local function renderDungeonBoard3D(fake)
             local labelSize = tile.Revealed and UDim2.fromOffset(100, 26) or UDim2.fromOffset(44, 24)
             local labelColor = tile.Kind == "Treasure" and Color3.fromRGB(255, 226, 150) or Shell.Text
             billboard(labelBase, labelText, labelSize, Vector3.new(0, labelYOffset, 0), labelColor)
+            if tile.Revealed and tile.Object then
+                billboard(labelBase, tostring(tile.Object), UDim2.fromOffset(112, 20), Vector3.new(0, 0.48, 0), Shell.Muted)
+            end
 
             if clickable then
                 markClickableOn(tileParts, "Tile", tile.Id)
@@ -1215,14 +1221,16 @@ local function renderDungeonBoard3D(fake)
                 pad:SetAttribute("TableRushClickId", tile.Id)
             end
 
+            local tokenA = layout.TokenA or {-0.30, -0.14}
+            local tokenB = layout.TokenB or {0.30, 0.14}
             if fake.PlayerTile == tile.Id then
-                local token = part(renderFolder, "PlayerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x - 0.30, 0.62, z - 0.14), Shell.Blue, Enum.Material.SmoothPlastic)
+                local token = part(renderFolder, "PlayerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x + (tokenA[1] or -0.30), 0.62, z + (tokenA[2] or -0.14)), Shell.Blue, Enum.Material.SmoothPlastic)
                 token.Shape = Enum.PartType.Ball
                 billboard(token, "P1", UDim2.fromOffset(42, 20), Vector3.new(0, 1.02, 0), Shell.Text)
             end
 
             if fake.PartnerTile == tile.Id then
-                local token2 = part(renderFolder, "PartnerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x + 0.30, 0.62, z + 0.14), TeamPurple, Enum.Material.SmoothPlastic)
+                local token2 = part(renderFolder, "PartnerToken", Vector3.new(0.65, 0.5, 0.65), base * CFrame.new(x + (tokenB[1] or 0.30), 0.62, z + (tokenB[2] or 0.14)), TeamPurple, Enum.Material.SmoothPlastic)
                 token2.Shape = Enum.PartType.Ball
                 billboard(token2, "P2", UDim2.fromOffset(42, 20), Vector3.new(0, 1.02, 0), Shell.Text)
             end
@@ -1230,7 +1238,7 @@ local function renderDungeonBoard3D(fake)
             if tile.Kind == "Enemy" and not tile.Cleared and tile.Revealed then
                 local enemy = part(renderFolder, "Enemy_" .. tile.Id, Vector3.new(0.78, 0.7, 0.78), base * CFrame.new(x, 0.7, z + 0.48), Color3.fromRGB(200, 80, 70), Enum.Material.Neon)
                 enemy.Shape = Enum.PartType.Ball
-                billboard(enemy, tostring(tile.HP or 1) .. " HP", UDim2.fromOffset(72, 24), Vector3.new(0, 0.9, 0), Shell.Text)
+                billboard(enemy, tostring(tile.IntentIcon or "!") .. " " .. tostring(tile.Enemy or "Enemy") .. "\n" .. tostring(tile.HP or 1) .. " HP • " .. tostring(tile.Intent or "Intent"), UDim2.fromOffset(150, 42), Vector3.new(0, 0.96, 0), Shell.Text)
             end
 
             -- Decorations stay around edges/corners so they do not clip P1/P2 token positions.
@@ -1343,13 +1351,15 @@ local function renderDungeonBoard3D(fake)
     billboard(chest, "CHEST?", UDim2.fromOffset(100, 32), Vector3.new(0, 1.0, 0), Shell.Ink)
 
     local pot = part(renderFolder, "PotMarker", Vector3.new(2.2, 0.28, 1.0), base * CFrame.new(0, 0.35, -3.65), Color3.fromRGB(42, 32, 20), Enum.Material.SmoothPlastic)
-    billboard(pot, "POT " .. tostring(fake.Pot) .. "\nTHREAT " .. tostring(fake.Threat), UDim2.fromOffset(150, 48), Vector3.new(0, 0.9, 0), Shell.Gold)
+    local res = fake.Resources or {}
+    billboard(pot, "LIGHT " .. tostring(res.Light or 0) .. "  KEYS " .. tostring(res.Keys or 0) .. "\nSUPPLIES " .. tostring(res.Supplies or 0) .. "  THREAT " .. tostring(fake.Threat or 0), UDim2.fromOffset(210, 48), Vector3.new(0, 0.9, 0), Shell.Gold)
 end
 
 local function renderTop()
     local fake = state.fakeState
     if state.activeGame == Constants.GAME_KEYS.DungeonDoors and fake then
-        topText.Text = string.format("Room %d/%d  •  Pot %s  •  Threat %d  •  %s", fake.RoomIndex, fake.RoomsToWin, Util.formatNumber(fake.Pot), fake.Threat, fake.Phase)
+        local res = fake.Resources or {}
+        topText.Text = string.format("Room %d/%d • HP %s • Light %s • Keys %s • Supplies %s • Threat %d • %s", fake.RoomIndex or 1, fake.MaxRooms or fake.RoomsToWin or 11, tostring((fake.Players and fake.Players[1] and fake.Players[1].HP) or 0), tostring(res.Light or 0), tostring(res.Keys or 0), tostring(res.Supplies or 0), fake.Threat or res.Threat or 0, fake.Phase or "")
     else
         topText.Text = "Table Rush  •  Choose a table"
     end
@@ -2121,7 +2131,7 @@ local function makePlayerMat(ps, index)
         TextSize = mobile and 12 or 18,
         TextColor3 = Shell.Gold,
         TextXAlignment = Enum.TextXAlignment.Left,
-        Text = "Pouch " .. tostring(ps.Pouch),
+        Text = "HP " .. tostring(ps.HP or 0) .. "/" .. tostring(ps.MaxHP or 6),
         ZIndex = 32,
     }, mat)
 
@@ -2134,7 +2144,7 @@ local function makePlayerMat(ps, index)
             TextSize = compact and 12 or 15,
             TextColor3 = Shell.Green,
             TextXAlignment = Enum.TextXAlignment.Left,
-            Text = "Bank " .. tostring(ps.Bank) .. "  •  HP " .. tostring(ps.HP),
+            Text = tostring(ps.Status or "Ready"),
             ZIndex = 32,
         }, mat)
 
@@ -2146,7 +2156,7 @@ local function makePlayerMat(ps, index)
             TextSize = compact and 10 or 12,
             TextColor3 = Shell.Muted,
             TextXAlignment = Enum.TextXAlignment.Left,
-            Text = "Keys " .. tostring(ps.Keys) .. "  •  Light " .. tostring(ps.Light) .. "  •  " .. ps.Zone,
+            Text = tostring(ps.Zone or "Room") .. "  •  " .. tostring((state.fakeState.PartnerAction and index==2) and ("Chose " .. tostring(state.fakeState.PartnerAction.Title)) or ""),
             ZIndex = 32,
         }, mat)
     else
@@ -2158,7 +2168,7 @@ local function makePlayerMat(ps, index)
             TextSize = 9,
             TextColor3 = Shell.Muted,
             TextXAlignment = Enum.TextXAlignment.Left,
-            Text = "HP " .. tostring(ps.HP) .. " • " .. tostring(ps.Zone),
+            Text = tostring(ps.Status or "Ready") .. " • " .. tostring(ps.Zone),
             ZIndex = 32,
         }, mat)
     end
@@ -2310,7 +2320,7 @@ end
 
 function renderActions()
     clear(actionScroll)
-    if not state.activeGame or not state.fakeState or state.dailyOpen or hub.Visible or state.backpackOpen or state.layout == "PortraitBlocked" then
+    if not state.activeGame or not state.fakeState or state.fakeState.ExplorerMode or state.dailyOpen or hub.Visible or state.backpackOpen or state.layout == "PortraitBlocked" then
         actionLayer.Visible = false
         return
     end
@@ -2414,7 +2424,7 @@ local function renderLayout()
         actionLayer.Position = UDim2.new(0.5, 0, 1, -72)
         actionLayout.Padding = UDim.new(0, 5)
 
-        ticker.Size = UDim2.fromOffset(620, 38)
+        ticker.Size = UDim2.fromOffset(760, 44)
         ticker.Position = UDim2.new(0.5, 0, 1, -328)
         ticker.TextSize = 14
     end
@@ -2446,6 +2456,20 @@ end
 local function updateTableCamera()
     local camera = workspace.CurrentCamera
     if not camera then return end
+
+    if state.activeGame == Constants.GAME_KEYS.DungeonDoors and state.fakeState and state.fakeState.ExplorerMode and state.layout ~= "PortraitBlocked" then
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        camera.CameraType = Enum.CameraType.Scriptable
+        camera.FieldOfView = 46
+        if hrp then
+            local focus = hrp.Position
+            camera.CFrame = CFrame.new(focus + Vector3.new(0, 62, 30), focus + Vector3.new(0, 0, -3))
+        else
+            camera.CFrame = CFrame.new(Vector3.new(0, 76, 24), Vector3.new(0, 7, -8))
+        end
+        return
+    end
 
     if state.activeGame == Constants.GAME_KEYS.DungeonDoors and state.layout ~= "PortraitBlocked" then
         local map = workspace:FindFirstChild("TableRushMap") or workspace:FindFirstChild("TableRushHall")
@@ -2483,7 +2507,7 @@ function renderAll()
         showEventPopup(state.fakeState.EventPopup)
     end
 
-    if state.activeGame == Constants.GAME_KEYS.DungeonDoors then
+    if state.activeGame == Constants.GAME_KEYS.DungeonDoors and not (state.fakeState and state.fakeState.ExplorerMode) then
         renderDungeonBoard3D(state.fakeState)
     else
         renderFolder:ClearAllChildren()
@@ -2553,3 +2577,11 @@ end
 
 requestProfile:FireServer()
 renderAll()
+
+
+-- ExplorerCameraHeartbeat: keeps the physical room camera following the avatar while walking.
+RunService.RenderStepped:Connect(function()
+    if state.activeGame == Constants.GAME_KEYS.DungeonDoors and state.fakeState and state.fakeState.ExplorerMode then
+        updateTableCamera()
+    end
+end)

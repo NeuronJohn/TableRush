@@ -1252,3 +1252,78 @@ Fix the status/turn ticker overlapping the action cards and make card hover feel
 - `README.md`
 - `CHANGELOG.md`
 - `UPDATE_MANIFEST.md`
+
+
+## v0.7.0 — Living Dungeon Strategy Core
+
+### Major direction
+This version removes the fake banking/pouch focus and turns Dungeon Doors into a duo tactical room crawler. The core run is now: 8 exploration rooms, Room 9 boss, optional Room 10 Gold Key Vault, optional Room 11 Secret Death Room.
+
+### Built systems
+- 20 noticeable room templates with room families, traits, objects, entry events, puzzles, monsters, traps, and reward hooks.
+- New room resources: HP, Light, Keys, Supplies, Threat, Relics, Gold Key, Secret Path, Death Saves.
+- Search is now investigation: room objects, traps, chests, bridge repairs, route clues, secret tiles, weaknesses, and usable gear.
+- Scheme is now manipulation: enemy control, puzzle solving, route/room pressure, risky greed, and backfire.
+- Enemy intent decks: monsters have 2-6 actions instead of one generic attack.
+- Enemy turn presentation uses intent text/icons and applies different effects.
+- Candle Scout AI teammate activates after 5 seconds solo and shows its action.
+- Duo combo labels such as Covered Search, Protected Scheme, Covered Attack, and Expose and Strike.
+- Downed/death-save loop: HP can hit 0, Supplies/Bandage/relics can prevent or recover from death.
+- Items now have real tactical identity: weapons, armor, tools, relics, death-prevention items.
+- Player token slots are assigned per tile type so figures avoid objects, enemies, and props better.
+- Optional Gold Key and Secret Room logic added.
+
+### Design rules locked in
+- No pointless variable should stay just because it existed before.
+- Pouch/Bank are not core gameplay anymore.
+- Every room object should give Search/Scheme a reason to exist.
+- Every monster should show intent and behave differently.
+- UI text explains; the board state drives the game.
+
+## v0.8.0 — Real 3D Room Explorer Rebuild
+
+### Purpose
+Scratch the old small card/tile puzzle approach and replace the active Dungeon Doors feel layer with a real walkable 3D room on the tabletop.
+
+### Removed / deprecated
+- The action card hand is hidden during Dungeon Doors explorer mode.
+- Scheme is removed as a permanent card/action.
+- Search is no longer a once-per-room generic button.
+- Light/Keys/Supplies are removed from the visible run loop.
+- Old tile-click puzzle movement is no longer the active interaction layer.
+
+### Added
+- Physical tabletop room model per player.
+- Actual avatar walking around the tabletop room.
+- Larger tabletop scale and faster movement.
+- Top-down-ish camera following the avatar.
+- Physical objects with ProximityPrompts.
+- Search once per physical object/tile.
+- Interact prompts only when an actual use exists.
+- Collapsed bridge flow:
+  - physical blocker
+  - Search debris
+  - lever appears
+  - Interact lever
+  - bridge planks appear
+  - player crosses with avatar
+- Physical chests:
+  - Interact prompt
+  - animated reward spinner
+  - reward/risk result
+- Physical monsters:
+  - monster model
+  - intent label
+  - Fight prompt
+  - Threat-changing actions
+- Threat obelisk:
+  - Quiet / Uneasy / Hunting / Death Hunt tiers
+  - visible physical danger meter
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/ServerScriptService/TableRush/Server.server.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
