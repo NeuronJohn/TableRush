@@ -1400,3 +1400,52 @@ Fix the `renderActions()` crash:
 - `README.md`
 - `CHANGELOG.md`
 - `UPDATE_MANIFEST.md`
+
+## v0.9.0 — Puzzle/UI Reset
+
+### Purpose
+Reset the direction around the good tabletop room style while fixing the UI and adding real puzzle rooms.
+
+### Run structure
+- 8 exploration rooms.
+- Room 9 boss.
+- Room 10 optional Gold Key Vault.
+- Room 11 optional Secret Room.
+
+### UI fixes
+- Removed WASD helper.
+- Removed Threat/Pot/Pouch/Bank/Light from visible UI.
+- Play/Daily hidden during game.
+- Compact icon command rail replaces long text cards.
+- Removed global render-step text resizing loops that caused flashing/jitter.
+- Backpack overlay no longer hides other game UI.
+- Backpack sorting added.
+- Equip compare prompt now includes current item and new item data.
+
+### Puzzle Room 1
+- Twin Seal Gate.
+- One hidden lever appears visually after Search.
+- Partner plate provides teamwork.
+- Gate opens only after lever + plate.
+- Seal Brute is shielded/invincible until the puzzle is solved.
+
+### Puzzle Room 2
+- Echo Bell Chamber.
+- Search reveals Moon → Fang → Eye.
+- Bell tiles become the mini-game.
+- Wrong bell resets sequence and hurts.
+- Choir Warden shield breaks only after the sequence is solved.
+
+### Monster phase
+- Monster reveal uses a monster card popup.
+- Monster actions use a dedicated Monster Action state and popup.
+- Shielded monsters clearly show shield status.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/ReplicatedStorage/TableRush/Shared/DungeonDoorsSpec.lua`
+- `src/ServerScriptService/TableRush/Server.server.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`

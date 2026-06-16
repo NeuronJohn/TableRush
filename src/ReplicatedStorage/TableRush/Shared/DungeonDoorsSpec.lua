@@ -3,49 +3,17 @@ local Constants = require(script.Parent.Constants)
 local DungeonDoorsSpec = {}
 
 DungeonDoorsSpec.Actions = {
-    {
-        Key = Constants.ACTIONS.Step,
-        Title = "Move Figure",
-        Icon = "↔",
-        Body = "Use WASD or click a connected room. Monsters block doors.",
-        Tag = "MOVE",
-    },
-    {
-        Key = Constants.ACTIONS.Strike,
-        Title = "Fight",
-        Icon = "⚔",
-        Body = "Attack the live monster on your figure's tile.",
-        Tag = "COMBAT",
-    },
-    {
-        Key = Constants.ACTIONS.Search,
-        Title = "Search Tile",
-        Icon = "◆",
-        Body = "Inspect this tile once. Team-shared; no repeat search.",
-        Tag = "CLUE",
-    },
-    {
-        Key = Constants.ACTIONS.Interact,
-        Title = "Interact",
-        Icon = "✦",
-        Body = "Use the chest, lever, shrine, trap, clue, or exit here.",
-        Tag = "OBJECT",
-    },
-    {
-        Key = Constants.ACTIONS.Shield,
-        Title = "Brace",
-        Icon = "⬟",
-        Body = "Brace against enemy intent and lower immediate danger.",
-        Tag = "DEFEND",
-    },
+    {Key = Constants.ACTIONS.Step, Title = "Move", Icon = "↔", Body = "", Tag = "GO"},
+    {Key = Constants.ACTIONS.Strike, Title = "Fight", Icon = "⚔", Body = "", Tag = "HIT"},
+    {Key = Constants.ACTIONS.Search, Title = "Search", Icon = "◆", Body = "", Tag = "LOOK"},
+    {Key = Constants.ACTIONS.Interact, Title = "Use", Icon = "✦", Body = "", Tag = "USE"},
+    {Key = Constants.ACTIONS.Shield, Title = "Guard", Icon = "⬟", Body = "", Tag = "SAFE"},
 }
 
 DungeonDoorsSpec.FakeState = {
     Phase = Constants.DUNGEON_PHASES.ChooseAction,
     RoomIndex = 3,
-    RoomsToWin = 6,
-    Pot = 1250,
-    Threat = 2,
+    RoomsToWin = 9,
     CurrentRoom = {
         Key = "MimicStorage",
         Name = "Mimic Storage",

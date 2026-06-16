@@ -561,3 +561,17 @@ Hard UI cleanup pass:
 - Root cause: `cameraViewport()` was a local function declared later in the file, so Luau treated it as nil from inside `renderActions()`.
 - `renderActions()` now uses the earlier existing `viewport()` helper directly.
 - Added defensive remote guards for E/context actions.
+
+
+### v0.9.0 — Puzzle/UI Reset
+
+- Restores planned run structure: 8 exploration rooms, Room 9 boss, optional Room 10 Gold Key Vault, optional Room 11 Secret Room.
+- Removes the WASD board-figure helper entirely.
+- Removes Threat/Pot/Pouch/Bank/Light from visible game UI.
+- Hides Play/Daily while a game is active.
+- Backpack no longer hides other game UI and is sorted by equipped/slot/type/name.
+- Equip prompt now compares current item vs new item.
+- Replaces long ugly action cards with compact icon command buttons.
+- Removes render-step text safety loops that caused jitter/flashing.
+- Puzzle Room 1: Twin Seal Gate, with one lever that appears visually only after Search, a partner plate, a sealed gate, and an invincible monster until solved.
+- Puzzle Room 2: Echo Bell Chamber, a Moon → Fang → Eye sequence mini-game with visible bell objects and a shielded Choir Warden.

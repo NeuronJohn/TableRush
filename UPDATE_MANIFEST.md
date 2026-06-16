@@ -577,3 +577,22 @@ Exact changed files:
 - README.md
 - CHANGELOG.md
 - UPDATE_MANIFEST.md
+
+### v0.9.0 — Puzzle/UI Reset
+Patch over v0.8.6:
+- Adds deterministic 8/9/10/11 run structure.
+- Adds Twin Seal Gate puzzle room.
+- Adds Echo Bell Chamber puzzle mini-game.
+- Removes WASD helper.
+- Removes visible economy/noise stats.
+- Rebuilds action UI into compact icon rail.
+- Fixes backpack behavior/sorting/equip compare.
+
+Exact changed files:
+- Constants.lua
+- DungeonDoorsSpec.lua
+- Server.server.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md
