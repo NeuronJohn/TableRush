@@ -2329,7 +2329,7 @@ function renderActions(fake)
         return
     end
 
-    local v = cameraViewport()
+    local v = viewport()
     local mobile = v.X < 760
     actionLayer.Visible = true
     actionLayer.AnchorPoint = Vector2.new(0.5, 1)
@@ -2377,6 +2377,7 @@ end
 
 
 -- ClientRenderHotfix_v084:
+-- v0.8.6 note: renderActions must use viewport(), not cameraViewport(), because Luau local functions are not hoisted backward.
 -- v0.8.3 accidentally called renderLayout/updateTableCamera/cameraViewport without defining them.
 -- These are intentionally defensive and must never hard-crash the client.
 local function cameraViewport()
@@ -2584,18 +2585,18 @@ local function contextInteract()
         if tile.Id == fake.PlayerTile then current = tile break end
     end
     if current and current.Kind == "Enemy" and current.Revealed and not current.Cleared and (current.HP or 0) > 0 then
-        submitActionRemote:FireServer(Constants.ACTIONS.Strike)
+        if submitActionRemote then submitActionRemote:FireServer(Constants.ACTIONS.Strike) end
         return
     end
     for _, action in ipairs(fake.ActionCards or {}) do
         if action.Key == Constants.ACTIONS.Interact then
-            submitActionRemote:FireServer(Constants.ACTIONS.Interact)
+            if submitActionRemote then submitActionRemote:FireServer(Constants.ACTIONS.Interact) end
             return
         end
     end
     for _, action in ipairs(fake.ActionCards or {}) do
         if action.Key == Constants.ACTIONS.Search then
-            submitActionRemote:FireServer(Constants.ACTIONS.Search)
+            if submitActionRemote then submitActionRemote:FireServer(Constants.ACTIONS.Search) end
             return
         end
     end

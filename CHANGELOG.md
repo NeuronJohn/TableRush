@@ -1379,3 +1379,24 @@ The rebuilt command bar called helper names/signatures that did not exist in the
 - `README.md`
 - `CHANGELOG.md`
 - `UPDATE_MANIFEST.md`
+
+## v0.8.6 — Luau Scope RenderActions Hotfix
+
+### Purpose
+Fix the `renderActions()` crash:
+`TableRushClient:2332: attempt to call a nil value`
+
+### Root cause
+`renderActions()` called `cameraViewport()`, but `cameraViewport()` was declared later as a local function. In Luau, a later local function is not visible to an earlier function unless it is forward-declared.
+
+### Fixes
+- Replaced `cameraViewport()` inside `renderActions()` with the already-existing earlier `viewport()` helper.
+- Added a comment warning future patches not to use later local helpers from earlier functions.
+- Added defensive submit-remote guards for E/context actions.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`

@@ -564,3 +564,16 @@ Exact changed files:
 - README.md
 - CHANGELOG.md
 - UPDATE_MANIFEST.md
+
+### v0.8.6 — Luau Scope RenderActions Hotfix
+Patch over v0.8.5:
+- Fixes renderActions nil function crash caused by Luau local function scope.
+- renderActions now uses viewport() instead of cameraViewport().
+- Adds defensive context-action remote guards.
+
+Exact changed files:
+- Constants.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md

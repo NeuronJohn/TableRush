@@ -553,3 +553,11 @@ Hard UI cleanup pass:
 - Adds `corner()` compatibility alias to existing `round()`.
 - Makes `stroke()` accept both old and accidental new argument order.
 - Adds defensive nil guard on command submit.
+
+
+### v0.8.6 — Luau Scope RenderActions Hotfix
+
+- Fixes `renderActions()` crash at line 2332.
+- Root cause: `cameraViewport()` was a local function declared later in the file, so Luau treated it as nil from inside `renderActions()`.
+- `renderActions()` now uses the earlier existing `viewport()` helper directly.
+- Added defensive remote guards for E/context actions.
