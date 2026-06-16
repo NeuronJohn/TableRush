@@ -144,10 +144,22 @@ end
 
 local function stroke(obj, thickness, color, transparency)
     if not obj then return nil end
+
+    -- v0.8.5 compatibility:
+    -- Original helper was stroke(obj, thickness, color, transparency).
+    -- Some rebuilt UI code accidentally called stroke(obj, color, thickness, transparency).
+    -- Support both so render code cannot crash on UIStroke property types.
+    if typeof(thickness) == "Color3" then
+        local passedColor = thickness
+        local passedThickness = color
+        thickness = passedThickness
+        color = passedColor
+    end
+
     return make("UIStroke", {
-        Thickness = thickness or 1,
-        Color = color or Shell.Border,
-        Transparency = transparency or 0.25,
+        Thickness = type(thickness) == "number" and thickness or 1,
+        Color = typeof(color) == "Color3" and color or Shell.Border,
+        Transparency = type(transparency) == "number" and transparency or 0.25,
     }, obj)
 end
 
@@ -161,6 +173,7 @@ local function pad(obj, l, r, t, b)
 end
 
 local function clear(frame)
+    if not frame then return end
     for _, child in ipairs(frame:GetChildren()) do
         if not child:IsA("UICorner")
             and not child:IsA("UIStroke")
@@ -170,6 +183,16 @@ local function clear(frame)
             child:Destroy()
         end
     end
+end
+
+-- v0.8.5 command-bar compatibility aliases.
+-- Newer UI code should not call undefined helpers.
+local function clearChildren(frame)
+    return clear(frame)
+end
+
+local function corner(obj, radius)
+    return round(obj, radius)
 end
 
 local gui = make("ScreenGui", {
@@ -2290,7 +2313,9 @@ local function makeActionCard(action, stateData, index, mobile)
     end)
     button.MouseButton1Click:Connect(function()
         if action.Disabled then return end
-        submitActionRemote:FireServer(action.Key)
+        if submitActionRemote then
+            submitActionRemote:FireServer(action.Key)
+        end
     end)
 
     return slot
@@ -2298,7 +2323,7 @@ end
 
 function renderActions(fake)
     fake = fake or state.fakeState
-    clearChildren(actionLayer)
+    clear(actionLayer)
     if not fake or not fake.ActionCards then
         actionLayer.Visible = false
         return

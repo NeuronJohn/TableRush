@@ -550,3 +550,17 @@ Exact changed files:
 - README.md
 - CHANGELOG.md
 - UPDATE_MANIFEST.md
+
+### v0.8.5 — Command Bar Compatibility Hotfix
+Patch over v0.8.4:
+- Fixes undefined clearChildren crash.
+- Adds corner alias.
+- Makes stroke helper tolerate both argument orders.
+- Guards submit remote.
+
+Exact changed files:
+- Constants.lua
+- TableRushClient.client.lua
+- README.md
+- CHANGELOG.md
+- UPDATE_MANIFEST.md

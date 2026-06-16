@@ -544,3 +544,12 @@ Hard UI cleanup pass:
 - Adds `cameraViewport()` helper used by the command bar.
 - Makes `renderActions()` default to `state.fakeState` if called without an argument.
 - `renderAll()` now passes `state.fakeState` into the command bar renderer.
+
+
+### v0.8.5 — Command Bar Compatibility Hotfix
+
+- Fixes command bar crash at `renderActions`: `clearChildren()` was undefined.
+- Adds `clearChildren()` compatibility alias to existing `clear()`.
+- Adds `corner()` compatibility alias to existing `round()`.
+- Makes `stroke()` accept both old and accidental new argument order.
+- Adds defensive nil guard on command submit.

@@ -1353,3 +1353,29 @@ Fix the v0.8.3 client crash:
 - `README.md`
 - `CHANGELOG.md`
 - `UPDATE_MANIFEST.md`
+
+## v0.8.5 — Command Bar Compatibility Hotfix
+
+### Purpose
+Fix the v0.8.4/v0.8.3 command bar crash:
+`TableRushClient:2301: attempt to call a nil value` inside `renderActions`.
+
+### Root cause
+The rebuilt command bar called helper names/signatures that did not exist in the original client:
+- `clearChildren()` was called, but the original helper is `clear()`.
+- `corner()` was called, but the original helper is `round()`.
+- Some `stroke()` calls used color/thickness arguments in the wrong order.
+
+### Fixes
+- Added `clearChildren(frame)` alias.
+- Added `corner(obj, radius)` alias.
+- Made `stroke()` support both argument orders.
+- Changed `renderActions()` to call `clear(actionLayer)` directly.
+- Added defensive nil guard on submit remote in command button click.
+
+### Files changed
+- `src/ReplicatedStorage/TableRush/Shared/Constants.lua`
+- `src/StarterPlayer/StarterPlayerScripts/TableRushClient.client.lua`
+- `README.md`
+- `CHANGELOG.md`
+- `UPDATE_MANIFEST.md`
