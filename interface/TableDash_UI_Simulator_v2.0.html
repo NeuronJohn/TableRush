@@ -1,0 +1,1282 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Table Dash UI Simulator v3.7 Toy Cabinet Equip Rules</title>
+<style>
+html,body{margin:0;width:100%;height:100%;background:#050711;overflow:hidden;font-family:Arial,Helvetica,sans-serif}
+#wrap{width:100vw;height:100vh;display:grid;place-items:center}
+canvas{max-width:100vw;max-height:100vh;background:#050711}
+#help{position:fixed;left:12px;bottom:10px;color:#c7b8f0;background:rgba(8,10,22,.84);border:1px solid #6946af;border-radius:10px;padding:8px 10px;font:12px/1.35 Arial;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="ui" width="1250" height="632"></canvas></div>
+<div id="help" style="display:none">Table Dash UI Simulator v3.7 TOY CABINET EQUIP RULES</div>
+<script>
+const canvas=document.getElementById("ui"),ctx=canvas.getContext("2d");
+const REF_W=1250,REF_H=632;
+const C={bg:"#050711",panel:"#080a16",panel2:"#0d1022",panel3:"#14142d",purple:"#aa48ff",purple2:"#6946af",purple3:"#3e286d",violet:"#c24cff",muted:"#c7b8f0",muted2:"#9f94c3",gold:"#ffe169",gold2:"rgb(255,204,76)",goldDeep:"#ffb126",white:"#f5f0ff",blue:"#127bff",cyan:"#34c6ff",green:"#22e153",pink:"#e81269",orange:"#f57300",red:"#ff4818"};
+let mode="ref",page="play",tab="quickplay",modal=null,sortOpen=false,sortMode="Popular",searchFocused=false,searchText="",toastText="",toastUntil=0,hitboxes=[];
+let coins=0,tickets=0,lvl=1,xp=0,xpMax=500,streak=0,passXP=0,passMax=500,passLevel=0;
+let host={access:"Invite Code",mode:"Normal",players:4,entry:400};let pressFx=null;let selectedToySlot=0;let equippedToySlots=["Dice Buddy",null,null];let toyScroll=0;let ownedToys={"Dice Buddy":true};let selectedHostGame="simon";let passRewardClaimed={};let matchClaimed=false;let hostModeDropdown=false;let gameDropdown=false;let equippedToy="None";let tableTheme="Starter";let tableLevel=1;let tablePlaced=false;let myTableTab="custom";let rewardsTab="daily";let premiumOwned=false;let dailyClaimed=false;let premiumDailyClaimed=false;let passTicketClaimed=false;let activeTaskPanel="daily";
+function syncProgress(){
+  while(xp>=xpMax){
+    xp-=xpMax;
+    lvl+=1;
+    tableLevel=lvl;
+    xpMax=Math.floor(xpMax*1.18+120);
+  }
+  if(xp<0)xp=0;
+  passLevel=Math.floor(passXP/500);
+}
+function grantXP(amount){xp+=amount;syncProgress()}
+function grantPassXP(amount){passXP+=amount;passLevel=Math.floor(passXP/500)}
+const games=[
+{id:"what",title:"WHAT THAT ?",sub:"Sketch fast. Guess faster.",players:"2 - 6 Players",cost:200,stroke:"#0091ff",join:"#0b7bff",icon:"draw"},
+{id:"better",title:"Better or Worse",sub:"Pick higher or lower.",players:"2 - 8 Players",cost:200,stroke:"#e82685",join:"#e81269",icon:"arrows"},
+{id:"word",title:"WORD BOMB DUEL",sub:"Think before it pops.",players:"2 - 6 Players",cost:500,stroke:C.purple,join:"#7626ee",icon:"bomb"},
+{id:"simon",title:"SIMON DASH",sub:"Repeat the pattern.",players:"2 - 4 Players",cost:400,stroke:"#19c837",join:"#12b52a",icon:"simon"},
+{id:"stack",title:"STACK OR CRASH",sub:"Risk it or bank it.",players:"2 - 4 Players",cost:400,stroke:"#ff9b00",join:"#f57300",icon:"stack"}
+];let selectedGame=games[0];let hostGame=games[3];
+const passRewards=["Coin x100","Ticket x2","Trail x1","Emote","Coin x150","Ticket","Flame","Ticket x2","Coin x200","Mystery"];
+const tasks=[["Play 10 Matches",6,10,250],["Win 3 Matches",1,3,300],["Use 5 Emotes",2,5,200]];
+function setMode(m){mode=m;if(m==="1080"){canvas.width=1920;canvas.height=1080}else{canvas.width=REF_W;canvas.height=REF_H}draw()}
+function tf(){if(mode==="1080"){let s=Math.min(canvas.width/REF_W,canvas.height/REF_H);return{s,ox:(canvas.width-REF_W*s)/2,oy:(canvas.height-REF_H*s)/2}}return{s:1,ox:0,oy:0}}
+function ref(fn){let t=tf();ctx.save();ctx.translate(t.ox,t.oy);ctx.scale(t.s,t.s);fn();ctx.restore()}
+function toRef(cx,cy){let r=canvas.getBoundingClientRect(),x=(cx-r.left)*(canvas.width/r.width),y=(cy-r.top)*(canvas.height/r.height),t=tf();return{x:(x-t.ox)/t.s,y:(y-t.oy)/t.s}}
+function hit(n,x,y,w,h,fn){hitboxes.push({n,x,y,w,h,fn})}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function box(x,y,w,h,r,fill,stroke=null,sw=1,glow=false){if(glow){ctx.save();ctx.shadowColor="rgba(170,72,255,.66)";ctx.shadowBlur=16;rr(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.lineWidth=sw;ctx.strokeStyle=stroke;ctx.stroke()}ctx.restore()}rr(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.lineWidth=sw;ctx.strokeStyle=stroke;ctx.stroke()}}
+function grad(x,y,w,h,r,top,bottom,stroke=null,sw=1,glow=false){let g=ctx.createLinearGradient(0,y,0,y+h);g.addColorStop(0,top);g.addColorStop(1,bottom);box(x,y,w,h,r,g,stroke,sw,glow)}
+function line(x1,y1,x2,y2,c="rgba(199,184,240,.17)",w=1){ctx.strokeStyle=c;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
+function txt(s,x,y,size=16,color=C.white,bold=true,align="center",base="middle",mw=null){
+  s = String(s);
+  let fs=size;
+  ctx.textAlign=align;
+  ctx.textBaseline=base;
+  ctx.fillStyle=color;
+  ctx.font=`${bold?900:700} ${fs}px Arial`;
+  if(mw){
+    while(ctx.measureText(s).width>mw && fs>7){
+      fs-=1;
+      ctx.font=`${bold?900:700} ${fs}px Arial`;
+    }
+    if(ctx.measureText(s).width>mw){
+      let o=s;
+      while(ctx.measureText(o).width>mw && o.length>2) o=o.slice(0,-2)+"…";
+      s=o;
+    }
+  }
+  ctx.fillText(s,x,y);
+}
+function btn(x,y,w,h,label,active=false,fn=null,icon=null,small=false){
+  const now=performance.now();
+  const down=pressFx && now<pressFx.until && Math.abs(pressFx.x-x)<1 && Math.abs(pressFx.y-y)<1 && Math.abs(pressFx.w-w)<1 && Math.abs(pressFx.h-h)<1;
+  grad(x,y,w,h,small?8:12,
+    down ? "#3b2854" : active ? "#2a1e3a" : "#0d1022",
+    down ? "#180d24" : active ? "#120e1e" : "#070916",
+    active?C.gold2:C.purple2,
+    down ? 3 : active?2.5:1.6,
+    active || down
+  );
+  const textMax=Math.max(20,w-(icon?56:18));
+  if(icon)drawIcon(icon,x+27,y+h/2,small?14:18,active?C.gold:C.muted);
+  txt(label,x+w/2+(icon?14:0),y+h/2,small?10:13,active?C.gold:C.muted,true,"center","middle",textMax);
+  if(fn)hit("btn_"+label,x,y,w,h,()=>{
+    pressFx={x,y,w,h,until:performance.now()+160};
+    draw();
+    setTimeout(()=>{pressFx=null;fn();},70);
+  });
+}
+function disabledBtn(x,y,w,h,label,icon=null,small=false){
+  grad(x,y,w,h,small?8:12,"#070814","#05060d","#3f315e",1.05,false);
+  ctx.save();
+  ctx.globalAlpha=.55;
+  if(icon)drawIcon(icon,x+27,y+h/2,small?14:18,C.purple2);
+  txt(label,x+w/2+(icon?14:0),y+h/2,small?10:13,C.muted2,true,"center","middle",Math.max(20,w-(icon?56:18)));
+  ctx.restore();
+}
+function disabledBtn(x,y,w,h,label,icon=null,small=false){
+  grad(x,y,w,h,small?8:12,"#070814","#05060d","#3f315e",1.05,false);
+  ctx.save();ctx.globalAlpha=.55;
+  if(icon)drawIcon(icon,x+27,y+h/2,small?14:18,C.purple2);
+  txt(label,x+w/2+(icon?14:0),y+h/2,small?10:13,C.muted2,true,"center","middle",Math.max(20,w-(icon?56:18)));
+  ctx.restore();
+}
+function pill(x,y,w,h,label,color=C.muted,stroke=C.purple2){
+  box(x,y,w,h,9,"#0b0d1d",stroke,1.2);
+  txt(label,x+w/2,y+h/2,10,color,true,"center","middle",w-12);
+}
+function coin(x,y,r=11){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=C.goldDeep;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=C.gold;ctx.stroke();txt("D",x,y+1,r*.85,"#4a2600",true)}
+function ticketIcon(x,y,w=30,h=20){box(x-w/2,y-h/2,w,h,4,"#2588ef","#8bd0ff",1.5);txt("T",x,y+1,13,"#eaf8ff",true)}
+function starIcon(x,y,r=13,col=C.gold){ctx.save();ctx.translate(x,y);ctx.beginPath();for(let i=0;i<10;i++){let a=-Math.PI/2+i*Math.PI/5,rad=i%2?r*.45:r;ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad)}ctx.closePath();ctx.fillStyle=col;ctx.fill();ctx.restore()}
+function flame(x,y,s=1){ctx.fillStyle=C.red;ctx.beginPath();ctx.ellipse(x,y,14*s,16*s,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#ffd447";ctx.beginPath();ctx.ellipse(x,y+4*s,8*s,9*s,0,0,Math.PI*2);ctx.fill()}
+function crown(x,y,s=1){ctx.fillStyle=C.goldDeep;ctx.strokeStyle=C.gold;ctx.lineWidth=1.2*s;ctx.beginPath();ctx.moveTo(x,y+22*s);ctx.lineTo(x+12*s,y);ctx.lineTo(x+24*s,y+22*s);ctx.lineTo(x+38*s,y+3*s);ctx.lineTo(x+50*s,y+22*s);ctx.closePath();ctx.fill();ctx.stroke()}
+function drawIcon(type,x,y,s=18,col=C.muted){ctx.save();ctx.translate(x,y);ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=2;if(type==="gamepad"){box(-15,-9,30,18,8,col,null,0);ctx.fillStyle="#080916";ctx.fillRect(-10,-2,9,3);ctx.fillRect(-7,-5,3,9);ctx.beginPath();ctx.arc(7,-3,2.5,0,Math.PI*2);ctx.arc(12,3,2.5,0,Math.PI*2);ctx.fill()}else if(type==="gift"){ctx.fillRect(-12,-4,24,17);ctx.clearRect(-2,-4,4,17);ctx.clearRect(-12,3,24,3);ctx.beginPath();ctx.arc(-5,-8,6,0,Math.PI*2);ctx.arc(5,-8,6,0,Math.PI*2);ctx.stroke()}else if(type==="medal"){ctx.beginPath();ctx.arc(0,-2,12,0,Math.PI*2);ctx.fill();ctx.fillStyle="#080916";starIcon(0,-2,6,"#080916");ctx.fillStyle=col;ctx.fillRect(-5,8,4,11);ctx.fillRect(1,8,4,11)}else if(type==="table"){ctx.fillRect(-16,-7,32,8);ctx.fillRect(-13,1,5,14);ctx.fillRect(8,1,5,14)}else if(type==="eye"){ctx.beginPath();ctx.ellipse(0,0,17,9,0,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(0,0,5,0,Math.PI*2);ctx.fill()}else if(type==="arrow"){ctx.beginPath();ctx.moveTo(-6,-12);ctx.lineTo(8,0);ctx.lineTo(-6,12);ctx.lineWidth=5;ctx.stroke()}else if(type==="lock"){ctx.strokeRect(-10,-1,20,14);ctx.beginPath();ctx.arc(0,-2,8,Math.PI,0);ctx.stroke()}ctx.restore()}
+function gameIcon(kind,x,y){if(kind==="draw"){ctx.strokeStyle=C.gold;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x-18,y+12);ctx.lineTo(x+14,y-16);ctx.stroke();box(x-10,y-5,18,28,4,"#ffdba0",null,0);txt("~",x,y+6,24,C.blue,true)}else if(kind==="arrows"){txt("⇅",x,y,32,C.pink,true)}else if(kind==="bomb"){ctx.fillStyle="#482070";ctx.beginPath();ctx.arc(x,y,17,0,Math.PI*2);ctx.fill();flame(x+15,y-17,.35)}else if(kind==="simon"){ctx.fillStyle=C.green;ctx.beginPath();ctx.arc(x,y,9,0,Math.PI*2);ctx.fill()}else if(kind==="stack"){ctx.fillStyle=C.orange;ctx.beginPath();ctx.moveTo(x-15,y+10);ctx.lineTo(x+10,y+10);ctx.lineTo(x+16,y-12);ctx.lineTo(x-9,y-12);ctx.closePath();ctx.fill()}}
+function background(){let g=ctx.createLinearGradient(0,0,0,REF_H);g.addColorStop(0,"#080d1c");g.addColorStop(.45,"#15133a");g.addColorStop(1,"#070916");ctx.fillStyle=g;ctx.fillRect(0,0,REF_W,REF_H);for(let i=0;i<9;i++){ctx.fillStyle=i%2?"rgba(55,40,115,.27)":"rgba(15,35,60,.42)";ctx.fillRect(i*140,0,70,REF_H)}ctx.fillStyle="rgba(170,72,255,.08)";ctx.fillRect(0,0,REF_W,REF_H);ctx.strokeStyle="rgba(150,170,200,.12)";for(let x=-300;x<REF_W+300;x+=42){ctx.beginPath();ctx.moveTo(x,170);ctx.lineTo(x+380,REF_H);ctx.stroke()}for(let y=170;y<REF_H;y+=30){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(REF_W,y);ctx.stroke()}}
+function topChip(x,y,w,type,value,plus=false,fn=null){
+  grad(x,y,w,38,9,"#101225","#060713",C.purple2,1.5);
+  if(type==="coin")coin(x+22,y+19,12);
+  else if(type==="ticket")ticketIcon(x+22,y+19);
+  else if(type==="level")starIcon(x+22,y+19,12);
+  else flame(x+22,y+19);
+  txt(value,x+50,y+20,13,C.white,true,"left","middle",w-(plus?78:58));
+  if(plus)txt("+",x+w-22,y+20,19,C.white,true);
+  if(fn)hit(value,x,y,w,38,fn);
+}
+function topBar(){topChip(610,28,128,"coin",String(coins.toLocaleString()),true,()=>{modal="coins";draw()});topChip(750,28,235,"level","Lvl. "+lvl,false,()=>{modal="level";draw()});box(858,40,112,14,7,"#050713",C.purple2,1);box(860,42,Math.max(8,108*xp/xpMax),10,5,C.blue,null,0);txt(`${xp.toLocaleString()} / ${xpMax.toLocaleString()} XP`,916,47,7,C.white,true);topChip(997,28,115,"ticket",String(tickets),true,()=>{modal="ad";draw()});topChip(1125,28,118,"streak",String(streak),false,()=>{modal="streak";draw()});txt("WIN STREAK",1191,57,6,C.white,true)}
+function logo(x=225,y=68,scale=1){ctx.save();ctx.shadowColor="rgba(170,72,255,.95)";ctx.shadowBlur=10;box(x,y,168*scale,104*scale,10*scale,"rgba(30,10,65,.92)",C.purple,2);ctx.restore();txt("TABLE",x+84*scale,y+28*scale,34*scale,C.white,true);txt("DASH",x+84*scale,y+76*scale,45*scale,"#ffc62f",true);crown(x+55*scale,y-30*scale,scale)}
+function bottomNav(){grad(188,558,882,68,15,"rgba(4,7,12,.98)","rgba(4,6,10,.98)",C.purple2,1.5,true);[["PLAY","play","gamepad",197],["REWARDS","rewards","gift",413],["PASS","pass","medal",629],["MY TABLE","mytable","table",845]].forEach(([l,p,ic,x])=>btn(x,567,210,50,l,page===p,()=>{page=p;modal=null;draw()},ic))}
+function pagePanel(title=null,sub=null){grad(174,82,908,456,17,"rgba(18,20,37,.98)","rgba(6,8,19,.98)",C.purple,1.5,true);btn(1033,108,40,40,"X",false,()=>{page=null;draw()});if(title){if(title==="ARCADE PASS"){logo(210,112,.55);txt(title,370,124,31,C.white,true,"left","middle",470);txt(sub,370,156,13,C.violet,true,"left","middle",600)}else{crown(455,105,.8);txt(title,625,122,32,C.white,true,"center","middle",610);if(sub)txt(sub,625,155,14,C.muted,true,"center","middle",720)}}}
+function drawPlay(){pagePanel();logo(225,68);grad(485,138,108,46,8,"#101225","#060713",C.purple2,1.8);ticketIcon(533,161);txt("+",565,161,24,C.white,true);hit("ad",485,138,108,46,()=>{modal="ad";draw()});grad(623,126,380,72,14,"#11102b","#070817",C.purple2,2,true);box(642,131,76,62,13,"#26105e",C.purple,2);crown(650,115,.55);txt("Arcade Pass",748,148,18,C.white,true,"left");txt("Season 1 - Neon Nights",748,169,7,C.muted,true,"left");box(748,177,225,17,8,"#070814",C.purple2,1);box(751,180,150,11,6,"#7b29ee",null,0);hit("passmini",623,126,380,72,()=>{modal="passBuy";draw()});btn(198,204,160,39,"QUICKPLAY",tab==="quickplay",()=>{tab="quickplay";draw()});btn(363,204,153,39,"HOSTED",tab==="hosted",()=>{tab="hosted";draw()});btn(518,204,153,39,"FRIENDS",tab==="friends",()=>{tab="friends";draw()});grad(748,209,163,35,8,searchFocused?"#14122b":"#0d1022","#070916",searchFocused?C.gold2:C.purple2,searchFocused?2.3:1.5);txt("S",768,227,10,searchFocused?C.gold:C.muted,true);txt(searchText||(searchFocused?"Type now...":"Search games..."),792,227,11,searchFocused?C.gold:C.muted,true,"left");hit("search",748,209,163,35,()=>{searchFocused=true;draw()});grad(919,209,143,35,8,"#0d1022","#070916",sortOpen?C.gold2:C.purple2,sortOpen?2.3:1.5);txt("Sort: "+sortMode,940,227,11,sortOpen?C.gold:C.muted,true,"left");txt("v",1039,227,12,sortOpen?C.gold:C.muted,true);hit("sort",919,209,143,35,()=>{sortOpen=!sortOpen;draw()});if(tab==="quickplay"){let arr=games.filter(g=>!searchText||g.title.toLowerCase().includes(searchText.toLowerCase()));if(sortMode==="Entry Low")arr.sort((a,b)=>a.cost-b.cost);if(sortMode==="Entry High")arr.sort((a,b)=>b.cost-a.cost);if(sortMode==="A-Z")arr.sort((a,b)=>a.title.localeCompare(b.title));arr.forEach((g,i)=>drawGameCard(g,197+i*166,257))}else{txt(tab==="hosted"?"Hosted tables will appear here.":"Friends tables will appear here.",628,370,22,C.muted,true)}btn(1027,257,44,151,">",false,()=>toast("More games coming soon."));btn(1027,424,44,44,"<",false,()=>toast("Previous page."));if(sortOpen)drawSort()}
+function drawSort(){
+  // Top-layer dropdown: blocks cards underneath and draws after the Play page content.
+  hit("SORT_DROPDOWN_LAYER_BLOCKER",174,82,908,456,()=>{sortOpen=false;draw()});
+  hit("SORT_DROPDOWN_BODY",919,250,143,146,()=>{});
+  grad(919,250,143,146,8,"#0d1022","#070916",C.purple2,1.8,true);
+  ["Popular","Entry Low","Entry High","A-Z"].forEach((o,i)=>{
+    let y=258+i*34;
+    box(927,y,127,27,6,o===sortMode?"rgba(54,37,69,1)":"rgba(9,11,25,1)",o===sortMode?C.gold2:C.purple2,o===sortMode?1.5:1);
+    txt(o,942,y+14,10,o===sortMode?C.gold:C.muted,true,"left","middle",106);
+    hit("sort"+o,927,y,127,27,()=>{sortMode=o;sortOpen=false;draw()});
+  });
+}
+function drawGameCard(g,x,y){grad(x,y,157,229,12,"#050712","#03050e",g.stroke,1.6);box(x+10,y+10,137,96,8,"#070a17","#0b0d1c",1);gameIcon(g.icon,x+78,y+58);txt(g.title,x+78,y+136,13,C.white,true,"center","middle",138);txt(g.players,x+78,y+158,10,C.white,true);box(x+12,y+184,67,35,8,"#090b19",C.purple2,1);coin(x+26,y+202,10);txt(String(g.cost),x+52,y+202,11,C.white,true);box(x+87,y+184,58,35,8,g.join,"rgba(255,255,255,.45)",1);txt("JOIN",x+116,y+202,11,C.white,true);hit("join"+g.id,x+87,y+184,58,35,()=>{selectedGame=g;modal="join";draw()})}
+function rewardCard(x,y,w,h,title,sub,action,active=false,fn=null,ic=null){
+  grad(x,y,w,h,12,"#101225","#070916",C.purple2,1.2);
+  if(ic)drawIcon(ic,x+28,y+28,18,C.gold);
+  txt(title,x+(ic?52:18),y+28,15,C.white,true,"left","middle",w-(ic?68:36));
+  txt(sub,x+18,y+58,10,C.muted,false,"left","middle",w-36);
+  btn(x+18,y+h-43,Math.min(124,w-36),30,action,active,fn||(()=>toast(action+" test")));
+}
+
+function cleanTab(x,y,w,label,active,fn){
+  grad(x,y,w,38,11,active?"#2a1e3a":"#0d1022",active?"#120e1e":"#070916",active?C.gold2:C.purple2,active?2.4:1.4,active);
+  txt(label,x+w/2,y+19,12,active?C.gold:C.muted,true,"center","middle",w-16);
+  hit("tab_"+label,x,y,w,38,fn);
+}
+
+function rewardTaskRow(x,y,w,title,progress,total,xpReward,kind){
+  const h=56;
+  grad(x,y,w,h,10,"#101225","#070916",C.purple2,1.1);
+  drawIcon(kind,x+30,y+28,16,kind==="medal"?C.gold:C.muted);
+  txt(title,x+60,y+18,13,C.white,true,"left","middle",Math.max(120,w-210));
+  const barW=Math.max(110,w-220);
+  box(x+60,y+34,barW,9,5,"#170d27",C.purple2,1);
+  box(x+62,y+36,progress>0?barW*progress/total:0,5,3,C.gold,null,0);
+  txt(`${progress} / ${total}`,x+60+barW+14,y+39,10,C.muted,true,"left","middle",52);
+  txt(`XP ${xpReward}`,x+w-138,y+28,10,C.gold,true,"left","middle",58);
+  const ready=progress>=total;
+  btn(x+w-74,y+14,58,28,ready?"CLAIM":"GO",ready,()=>{
+    if(ready){grantXP(xpReward);toast("Reward claimed");draw()}
+    else {page="play";modal=null;toast("Play games to progress");draw()}
+  },null,true);
+}
+function drawRewards(){
+  pagePanel("REWARDS","Daily Drops, goals, and match reward summaries");
+
+  // Real reward tabs
+  cleanTab(230,178,150,"DAILY",rewardsTab==="daily",()=>{rewardsTab="daily";draw()});
+  cleanTab(390,178,150,"WEEKLY",rewardsTab==="weekly",()=>{rewardsTab="weekly";draw()});
+  cleanTab(550,178,170,"RESULTS",rewardsTab==="results",()=>{rewardsTab="results";draw()});
+  cleanTab(730,178,170,"ARCADE PASS",false,()=>{page="pass";draw()});
+
+  if(rewardsTab==="daily"){
+    grad(215,238,330,248,14,"#101225","#070916",dailyClaimed?C.purple2:C.gold2,dailyClaimed?1.2:1.9,!dailyClaimed);
+    drawIcon("gift",252,278,23,C.gold);
+    txt("Daily Drop",288,270,21,C.white,true,"left","middle",190);
+    txt(dailyClaimed?"Claimed for today":"Free login reward to start your session.",252,306,11,C.muted,false,"left","middle",250);
+    coin(265,356,19);
+    txt("+100",300,350,24,C.gold,true,"left","middle",90);
+    ticketIcon(404,354,34,23);
+    txt("+1",448,356,18,C.white,true,"left","middle",42);
+    btn(245,424,230,42,dailyClaimed?"CLAIMED":"CLAIM",!dailyClaimed,()=>{
+      if(!dailyClaimed){dailyClaimed=true;coins+=100;tickets+=1;grantXP(50);toast("+100 coins, +1 ticket, +50 XP")}
+      draw()
+    });
+
+    grad(565,238,440,248,14,"#101225","#070916",C.purple2,1.2);
+    drawIcon("gamepad",600,274,18,C.gold);
+    txt("Daily Goals",632,272,20,C.white,true,"left","middle",210);
+    txt("Small goals that build Level XP and daily momentum.",600,304,10,C.muted,false,"left","middle",345);
+    rewardTaskRow(595,332,375,"Play 10 Matches",0,10,250,"gamepad");
+    rewardTaskRow(595,394,375,"Win 3 Matches",0,3,300,"medal");
+  }
+
+  if(rewardsTab==="weekly"){
+    grad(215,238,790,248,14,"#101225","#070916",C.purple2,1.2);
+    drawIcon("medal",252,274,20,C.gold);
+    txt("Weekly Goals",286,272,21,C.white,true,"left","middle",240);
+    txt("Bigger goals with stronger rewards. Resets weekly.",252,304,11,C.muted,false,"left","middle",440);
+    rewardTaskRow(250,334,700,"Win 15 Matches",0,15,900,"medal");
+    rewardTaskRow(250,396,700,"Host 5 Tables",0,5,650,"table");
+  }
+
+  if(rewardsTab==="results"){
+    grad(215,238,790,248,14,"#101225","#070916",C.purple2,1.2);
+    drawIcon("medal",252,274,20,C.gold);
+    txt("Match Rewards",286,272,21,C.white,true,"left","middle",250);
+    txt("Preview the end-of-round reward flow and claim-state behavior.",252,304,11,C.muted,false,"left","middle",520);
+    grad(250,335,220,92,12,"#0d1022","#070916",C.gold2,1.6,true);
+    txt("Winner payout",276,360,12,C.gold,true,"left","middle",140);
+    coin(282,395,17);txt("+420",315,395,22,C.gold,true,"left","middle",85);
+    grad(500,335,220,92,12,"#0d1022","#070916",C.purple2,1.2);
+    txt("Task progress",526,360,12,C.muted,true,"left","middle",150);
+    txt("0 / 3",526,395,22,C.white,true,"left","middle",80);
+    btn(745,360,200,42,"OPEN RESULTS",true,()=>{modal="results";draw()});
+  }
+
+  grad(215,500,790,30,10,"#0d1022","#070916",C.purple2,1.1);
+  txt("Win Streak is shown from the flame chip. Premium Win Bonus is explained there, not on this page.",240,515,10,C.muted,false,"left","middle",720);
+}
+
+function passRewardIcon(kind,x,y,locked=false){
+  if(kind==="coin")coin(x,y,12);
+  else if(kind==="ticket")ticketIcon(x,y,28,18);
+  else if(kind==="star")starIcon(x,y,12,locked?C.purple2:C.violet);
+  else if(kind==="flame")flame(x,y,.55);
+  else drawIcon("table",x,y,15,locked?C.purple2:C.gold);
+}
+function passCell(x,y,i,kind,status,locked,claimable,claimed,fn){
+  const stroke=claimable?C.gold2:claimed?C.green:C.purple2;
+  const fill=claimable?"rgba(47,31,28,1)":locked?"#090b17":"#0c0e20";
+  box(x,y,62,72,9,fill,stroke,claimable?2:1);
+  txt(String(i),x+10,y+12,10,claimable?C.gold:C.muted,true,"left","middle",18);
+  passRewardIcon(kind,x+31,y+34,locked);
+  const label=claimed?"CLAIMED":claimable?"CLAIM":status;
+  const color=claimed?C.green:claimable?C.gold:locked?C.muted2:C.muted;
+  txt(label,x+31,y+61,7,color,true,"center","middle",54);
+  if(claimable)hit("pass_claim_"+i+"_"+y,x,y,62,72,fn);
+}
+function passInfoCard(x,y,w,title,body,button,active,fn,icon){
+  grad(x,y,w,84,12,"#101225","#070916",active?C.gold2:C.purple2,active?1.7:1.15,active);
+  drawIcon(icon,x+30,y+31,17,active?C.gold:C.muted);
+  txt(title,x+58,y+27,13,C.white,true,"left","middle",w-78);
+  txt(body,x+58,y+50,9,C.muted,false,"left","middle",w-78);
+  btn(x+w-116,y+52,94,24,button,active,fn,null,true);
+}
+
+function drawPass(){
+  // Draw only the panel shell. Do NOT call pagePanel("ARCADE PASS"), because it draws a second overlapping title.
+  pagePanel(null,null);
+
+  // Header with guaranteed separation.
+  box(215,108,104,66,10,"#20113a",C.purple,1.6,true);
+  crown(240,100,.40);
+  txt("TABLE",267,132,18,C.white,true,"center","middle",92);
+  txt("DASH",267,155,20,C.gold,true,"center","middle",92);
+
+  txt("ARCADE PASS",350,122,30,C.white,true,"left","middle",300);
+  txt("Season 1: Neon Nights",352,154,13,C.violet,true,"left","middle",250);
+
+  starIcon(610,136,22,C.gold);
+  txt(String(passLevel),610,140,14,"#08080f",true);
+
+  txt("SEASON PROGRESS",690,116,13,C.muted,true,"left","middle",190);
+  box(690,140,250,14,7,"#170d27",C.purple2,1);
+  box(692,142,Math.min(246,246*passXP/passMax),10,5,C.gold,null,0);
+  txt(`${passXP.toLocaleString()} / ${passMax.toLocaleString()} XP`,690,164,13,C.white,true,"left","middle",190);
+
+  txt("ENDS IN",996,119,11,C.muted,true,"center","middle",70);
+  txt("27d 12h",996,151,18,C.muted,true,"center","middle",92);
+
+  btn(946,112,82,26,"SIM +XP",false,()=>{grantPassXP(500);toast("+500 Season XP");draw()},null,true);
+
+  // Reward track card
+  grad(205,198,860,224,13,"rgba(14,17,38,.95)","#070916",C.purple2,1.15);
+
+  // Left labels are inside the card and do not float off the edge.
+  box(226,224,86,68,9,"#0b0d1d",C.purple2,1);
+  txt("FREE",269,247,12,C.white,true,"center","middle",70);
+  txt("TRACK",269,269,9,C.muted,true,"center","middle",70);
+
+  box(226,318,86,72,9,premiumOwned?"rgba(47,31,28,1)":"#0b0d1d",premiumOwned?C.gold2:C.purple2,premiumOwned?1.8:1);
+  txt("PREMIUM",269,338,11,C.gold,true,"center","middle",72);
+  txt(premiumOwned?"ACTIVE":"LOCKED",269,360,8,premiumOwned?C.green:C.muted,true,"center","middle",72);
+  if(!premiumOwned)btn(235,364,68,20,"GET",true,()=>{modal="passBuy";draw()},null,true);
+
+  const kinds=["coin","star","ticket","table","coin","ticket","flame","star","ticket","coin"];
+  const startX=332, cellW=62, gap=10;
+  for(let i=1;i<=10;i++){
+    const x=startX+(i-1)*(cellW+gap);
+
+    const freeUnlocked=passLevel>=i;
+    const freeClaimed=!!passRewardClaimed["free"+i];
+    const freeClaimable=freeUnlocked&&!freeClaimed;
+    passCell(x,224,i,kinds[i-1],freeUnlocked?"READY":"LVL "+i,!freeUnlocked,freeClaimable,freeClaimed,()=>{
+      passRewardClaimed["free"+i]=true;
+      if(kinds[i-1]==="coin")coins+=100;
+      if(kinds[i-1]==="ticket")tickets+=1;
+      toast("Free reward claimed");
+      draw();
+    });
+
+    const premUnlocked=premiumOwned&&passLevel>=i;
+    const premClaimed=!!passRewardClaimed["premium"+i];
+    const premClaimable=premUnlocked&&!premClaimed;
+    passCell(x,320,i,kinds[(i+2)%kinds.length],premiumOwned?(premUnlocked?"READY":"LVL "+i):"PASS",!premUnlocked,premClaimable,premClaimed,()=>{
+      passRewardClaimed["premium"+i]=true;
+      if(kinds[(i+2)%kinds.length]==="ticket")tickets+=1; else coins+=150;
+      toast("Premium reward claimed");
+      draw();
+    });
+  }
+
+  // Bottom perk cards
+  passInfoCard(215,442,255,"6-Hour Ticket",premiumOwned?"Claim +1 ticket every 6 hours.":"Arcade Pass owner perk.","CLAIM",premiumOwned&&!passTicketClaimed,()=>{modal="passTicket";draw()},"ticket");
+  passInfoCard(485,442,230,"Bonus Drop",premiumOwned?"Extra daily claim for owners.":"Daily bonus with Arcade Pass.","CLAIM",premiumOwned&&!premiumDailyClaimed,()=>{modal="premiumDaily";draw()},"gift");
+  passInfoCard(730,442,295,"Season Quests",premiumOwned?"Complete and claim premium quests.":"Progress now. Claim with Arcade Pass.","VIEW",true,()=>{activeTaskPanel="season";modal="tasks";draw()},"medal");
+}
+function featureCard(x,y,w,h,title,sub,badge,action,active,fn,icon){
+  grad(x,y,w,h,14,active?"#16152c":"#101225","#070916",active?C.gold2:C.purple2,active?1.8:1.2,active);
+  drawIcon(icon,x+26,y+30,17,active?C.gold:C.muted);
+  txt(title,x+52,y+25,14,C.white,true,"left","middle",w-64);
+  txt(sub,x+18,y+58,9,C.muted,false,"left","middle",w-34);
+  pill(x+18,y+82,104,24,badge,active?C.gold:C.muted,active?C.gold2:C.purple2);
+  btn(x+w-88,y+80,70,26,action,active,fn,null,true);
+}
+
+function tableFeatureCard(x,y,w,h,title,sub,state,button,accent,fn,icon,locked=false){
+  grad(x,y,w,h,14,locked?"#0a0c18":"#101225","#070916",locked?"#3f315e":accent,locked?1.4:1.7,!locked && accent===C.gold2);
+  if(locked){
+    ctx.save();
+    ctx.globalAlpha=.28;
+    box(x+6,y+6,w-12,h-12,11,"#02030a",null,0);
+    ctx.restore();
+  }
+  drawIcon(icon,x+28,y+30,17,locked?C.purple2:accent);
+  txt(title,x+54,y+25,14,locked?C.muted:C.white,true,"left","middle",w-70);
+  txt(sub,x+18,y+58,9,locked?C.muted2:C.muted,false,"left","middle",w-36);
+  if(locked){
+    box(x+18,y+82,118,24,8,"#100b1c","#5e438b",1.2);
+    drawIcon("lock",x+32,y+94,10,C.gold);
+    txt(state,x+50,y+94,8,C.gold,true,"left","middle",78);
+    btn(x+w-92,y+80,74,26,"LOCKED",false,()=>toast(state),null,true);
+  }else{
+    pill(x+18,y+82,116,24,state,accent===C.gold2?C.gold:C.muted,accent);
+    btn(x+w-92,y+80,74,26,button,accent===C.gold2,fn,null,true);
+  }
+}
+
+function myTab(x,label,key,w=138){
+  cleanTab(x,176,w,label,myTableTab===key,()=>{myTableTab=key;draw()});
+}
+function drawLockPanel(x,y,w,h,title,sub,unlockText){
+  grad(x,y,w,h,14,"#090b17","#070916","#5e438b",1.4);
+  drawIcon("lock",x+38,y+48,22,C.gold);
+  txt(title,x+76,y+35,20,C.muted,true,"left","middle",w-98);
+  txt(sub,x+76,y+65,10,C.muted2,false,"left","middle",w-105);
+  box(x+28,y+h-60,w-56,42,10,"#100b1c","#5e438b",1.2);
+  txt(unlockText,x+w/2,y+h-39,12,C.gold,true,"center","middle",w-80);
+}
+
+function slotCard(x,y,w,h,icon,title,item,status,accent,locked=false,fn=null){
+  grad(x,y,w,h,12,locked?"#090b17":"#101225","#070916",locked?"#4b3570":accent,locked?1.2:1.6,!locked && accent===C.gold2);
+  drawIcon(locked?"lock":icon,x+28,y+32,18,locked?C.gold:accent);
+  txt(title,x+58,y+22,13,locked?C.muted:C.white,true,"left","middle",w-72);
+  txt(item,x+58,y+44,9,locked?C.muted2:C.muted,false,"left","middle",w-76);
+  box(x+18,y+h-30,w-36,22,8,locked?"#100b1c":"#0b0d1d",locked?"#5e438b":C.purple2,1);
+  txt(status,x+w/2,y+h-19,8,locked?C.gold:C.green,true,"center","middle",w-46);
+  if(fn) hit("slot_"+title,x,y,w,h,fn);
+}
+function sectionLabel(label,x,y,w){
+  txt(label,x,y,12,C.muted,true,"left","middle",w);
+  line(x,y+17,x+w,y+17,"rgba(143,85,255,.35)",1);
+}
+
+
+function smallStatus(x,y,w,label,kind="muted"){
+  const stroke = kind==="ready" ? C.gold2 : kind==="locked" ? "#5e438b" : C.purple2;
+  const fill = kind==="ready" ? "rgba(54,37,20,.62)" : kind==="locked" ? "#100b1c" : "#0b0d1d";
+  const color = kind==="ready" ? C.gold : kind==="locked" ? C.muted : C.muted;
+  box(x,y,w,22,8,fill,stroke,1.1);
+  txt(label,x+w/2,y+11,8,color,true,"center","middle",w-10);
+}
+function tableTabButton(x,y,w,label,key){
+  const active=myTableTab===key;
+  grad(x,y,w,38,11,active?"#241632":"#0d1022",active?"#120b19":"#070916",active?C.gold2:C.purple2,active?2.4:1.45,active);
+  txt(label,x+w/2,y+19,12,active?C.gold:C.muted,true,"center","middle",w-16);
+  hit("table_tab_"+key,x,y,w,38,()=>{pressFx={x,y,w,h:38,until:performance.now()+150};myTableTab=key;draw()});
+}
+function loadoutRow(x,y,w,title,value,status,locked=false,fn=null){
+  const h=50;
+  grad(x,y,w,h,10,locked?"#090b17":"#101225","#070916",locked?"#4d3a72":C.purple2,locked?1.05:1.2);
+  txt(title,x+16,y+17,12,locked?C.muted:C.white,true,"left","middle",w-150);
+  txt(value,x+16,y+35,9,locked?C.muted2:C.muted,false,"left","middle",w-150);
+  smallStatus(x+w-112,y+14,92,status,locked?"locked":status==="EQUIPPED"?"ready":"muted");
+  if(fn)hit("loadout_"+title,x,y,w,h,()=>{pressFx={x,y,w,h,until:performance.now()+160};draw();setTimeout(()=>{pressFx=null;fn()},70)})
+}
+function compactInfoRow(x,y,w,title,body){
+  grad(x,y,w,48,10,"#0d1022","#070916",C.purple2,1.05);
+  txt(title,x+16,y+17,12,C.white,true,"left","middle",w-32);
+  txt(body,x+16,y+35,9,C.muted,false,"left","middle",w-32);
+}
+function lockedNote(x,y,w,text){
+  box(x,y,w,34,9,"#0c0a18","#5e438b",1.1);
+  txt(text,x+w/2,y+17,9,C.muted,true,"center","middle",w-18);
+}
+
+
+function loadoutSafeRow(x,y,w,title,value,status,locked=false,fn=null){
+  const h=46;
+  grad(x,y,w,h,10,locked?"#090b17":"#101225","#070916",locked?"#4d3a72":C.purple2,locked?1.05:1.2);
+  txt(title,x+14,y+15,11,locked?C.muted:C.white,true,"left","middle",w-132);
+  txt(value,x+14,y+32,8.5,locked?C.muted2:C.muted,false,"left","middle",w-132);
+  smallStatus(x+w-106,y+12,88,status,locked?"locked":status==="EQUIPPED"?"ready":"muted");
+  if(fn)hit("safe_row_"+title,x,y,w,h,()=>{pressFx={x,y,w,h,until:performance.now()+150};draw();setTimeout(()=>{pressFx=null;fn()},70)});
+}
+function slimHint(x,y,w,text){
+  box(x,y,w,26,8,"#0b0d1d",C.purple2,1);
+  txt(text,x+w/2,y+13,8.5,C.muted,true,"center","middle",w-16);
+}
+
+
+function toySlotRow(x,y,w,title,value,status,locked=false,fn=null,actionLabel=null){
+  const h=54;
+  const lockedStroke = status==="PASS SLOT" ? "#6b4aa0" : "#4d3a72";
+  const stroke = locked ? lockedStroke : C.purple2;
+  const top = locked ? "#070914" : "#101225";
+  const bot = locked ? "#05060d" : "#070916";
+  grad(x,y,w,h,11,top,bot,stroke,locked?1.25:status==="EQUIPPED"?1.75:1.2,status==="EQUIPPED"&&!locked);
+
+  if(locked){
+    drawIcon("lock",x+18,y+27,12,(status==="PASS SLOT"||String(status).includes("PASS"))?C.gold:C.purple2);
+    txt(title,x+42,y+16,12,C.muted,true,"left","middle",w-184);
+    txt(value,x+42,y+35,8.5,C.muted2,false,"left","middle",w-184);
+  }else{
+    txt(title,x+16,y+17,12,C.white,true,"left","middle",w-166);
+    txt(value,x+16,y+36,8.5,C.muted,false,"left","middle",w-166);
+  }
+
+  let label;
+  if(locked) label = status==="PASS SLOT" ? "PASS LOCK" : status;
+  else if(actionLabel) label = actionLabel;
+  else if(status==="EQUIPPED") label = "CHANGE";
+  else if(status==="EMPTY") label = "CHOOSE";
+  else label = status;
+
+  if(locked){
+    disabledBtn(x+w-112,y+13,94,28,label,null,true);
+  }else{
+    btn(x+w-112,y+13,94,28,label,status==="EQUIPPED"||status==="EMPTY",fn,null,true);
+    if(fn) hit("toy_slot_row_"+title,x,y,w-122,h,()=>{
+      pressFx={x,y,w,h,until:performance.now()+180};
+      draw();
+      setTimeout(()=>{pressFx=null;fn()},80)
+    });
+  }
+}
+function toySlotValue(i){
+  const toy=equippedToySlots[i];
+  return toy ? "Equipped: "+toy : "Empty slot";
+}
+function toySlotStatus(i){
+  return equippedToySlots[i] ? "EQUIPPED" : "EMPTY";
+}
+function selectToySlot(i){
+  selectedToySlot=i;
+  modal="toyBrowser";
+  toyScroll=0;
+  draw();
+}
+
+function selectBrowseToySlot(){
+  // Browse Toys should open the first available empty slot.
+  // If every usable slot is filled, default back to Slot 1.
+  const usable=[];
+  if(lvl>=2) usable.push(0);
+  if(lvl>=5) usable.push(1);
+  if(premiumOwned) usable.push(2);
+  const empty=usable.find(i=>!equippedToySlots[i]);
+  selectToySlot(empty!==undefined ? empty : 0);
+}
+function isToyEquippedElsewhere(name){
+  return equippedToySlots.some((t,i)=>t===name && i!==selectedToySlot);
+}
+function syncEquippedToyLabel(){
+  equippedToy = equippedToySlots.filter(Boolean).map(t=>t.split(" ")[0]).join("+") || "None";
+}
+function perkRow(x,y,w,title,value,button,active,fn,locked=false){
+  const h=50;
+  grad(x,y,w,h,11,locked?"#090b17":"#101225","#070916",locked?"#4d3a72":active?C.gold2:C.purple2,locked?1.05:active?1.6:1.15,active&&!locked);
+  txt(title,x+18,y+17,12,locked?C.muted:C.white,true,"left","middle",w-150);
+  txt(value,x+18,y+35,8.5,locked?C.muted2:C.muted,false,"left","middle",w-150);
+  if(locked) disabledBtn(x+w-112,y+11,92,28,button,null,true);
+  else btn(x+w-112,y+11,92,28,button,active,fn,null,true);
+}
+function perkRow(x,y,w,title,value,button,active,fn,locked=false){
+  const h=58;
+  grad(x,y,w,h,11,locked?"#090b17":"#101225","#070916",locked?"#4d3a72":active?C.gold2:C.purple2,locked?1.05:active?1.6:1.15,active&&!locked);
+  txt(title,x+18,y+19,12,locked?C.muted:C.white,true,"left","middle",w-150);
+  txt(value,x+18,y+39,8.7,locked?C.muted2:C.muted,false,"left","middle",w-150);
+  if(locked) disabledBtn(x+w-112,y+16,92,28,button,null,true);
+  else btn(x+w-112,y+16,92,28,button,active,fn,null,true);
+}
+const toyCatalog=[
+  {name:"Dice Buddy",type:"Owned",source:"Starter toy",cost:0,kind:"owned"},
+  {name:"Coin Spinner",type:"Coins",source:"Purchase with coins",cost:2500,kind:"coin"},
+  {name:"Glow Yo-Yo",type:"Purchase",source:"Arcade Pass coin purchase",cost:4000,kind:"passCoin"},
+  {name:"Mini Arcade Bot",type:"Free Track",source:"Arcade Pass Level 3",cost:0,kind:"freeTrack"},
+  {name:"Crown Confetti",type:"Premium Track",source:"Arcade Pass premium reward",cost:0,kind:"premiumTrack"},
+  {name:"Firework Box",type:"Robux",source:"Robux shop item",cost:149,kind:"robux"},
+  {name:"Neon Mascot",type:"Purchase",source:"Arcade Pass coin purchase",cost:7500,kind:"passCoin"},
+  {name:"Lucky UFO",type:"Event",source:"Limited event reward",cost:0,kind:"event"}
+];
+function toyCard(x,y,w,h,toy){
+  const owned=!!ownedToys[toy.name];
+  const passLocked=(toy.kind==="passCoin"||toy.kind==="premiumTrack")&&!premiumOwned;
+  const trackLocked=toy.kind==="freeTrack" && passLevel<3;
+  const eventLocked=toy.kind==="event";
+  const equippedIndex=equippedToySlots.findIndex(t=>t===toy.name);
+  const equipped=equippedIndex===selectedToySlot;
+  const equippedElsewhere=equippedIndex!==-1 && equippedIndex!==selectedToySlot;
+  const locked=passLocked||trackLocked||eventLocked;
+  const canBuy=toy.kind==="coin" && coins>=toy.cost;
+  const canPassBuy=toy.kind==="passCoin" && premiumOwned && coins>=toy.cost;
+  const canRobux=toy.kind==="robux";
+
+  const stroke=equipped?C.gold2:equippedElsewhere?"#b98cff":locked?"#5e438b":(canBuy||canPassBuy||canRobux||owned)?C.gold2:C.purple2;
+  grad(x,y,w,h,12,locked?"#090b17":"#101225","#070916",stroke,equipped?2.0:equippedElsewhere?1.55:1.2,equipped);
+  box(x+12,y+14,52,48,10,locked?"#100b1c":"#17112b",locked?"#5e438b":C.purple2,1);
+  drawIcon(toy.kind==="robux"?"star":toy.kind==="premiumTrack"?"medal":toy.kind==="event"?"flame":"gift",x+38,y+38,15,locked?C.purple2:C.gold);
+
+  txt(toy.name,x+78,y+22,12,locked?C.muted:C.white,true,"left","middle",w-96);
+  txt(toy.source,x+78,y+41,8.5,locked?C.muted2:C.muted,false,"left","middle",w-96);
+
+  let tag=owned?"OWNED":toy.type.toUpperCase();
+  if(toy.kind==="passCoin") tag="PURCHASE";
+  if(equippedElsewhere) tag=`SLOT ${equippedIndex+1}`;
+  smallStatus(x+78,y+58,116,tag,equipped?"ready":locked?"locked":equippedElsewhere?"muted":"muted");
+
+  let label="EQUIP", disabled=false, active=false;
+  if(equipped){label="EQUIPPED"; active=false}
+  else if(equippedElsewhere){label="UNEQUIP"; active=false}
+  else if(owned){label="EQUIP"; active=true}
+  else if(toy.kind==="coin"){label=`${toy.cost.toLocaleString()} COINS`; active=coins>=toy.cost; disabled=!active}
+  else if(toy.kind==="passCoin"){
+    if(!premiumOwned){label="GET PASS"; active=true}
+    else {label=`${toy.cost.toLocaleString()} COINS`; active=coins>=toy.cost; disabled=!active}
+  }
+  else if(toy.kind==="freeTrack"){label=passLevel>=3?"CLAIM":"PASS LVL 3"; active=passLevel>=3; disabled=!active}
+  else if(toy.kind==="premiumTrack"){label=premiumOwned?"CLAIM":"GET PASS"; active=true}
+  else if(toy.kind==="robux"){label=`R$ ${toy.cost}`; active=true}
+  else if(toy.kind==="event"){label="EVENT"; disabled=true}
+
+  const bx=x+w-124, by=y+h-36;
+  if(disabled){
+    disabledBtn(bx,by,108,26,label,null,true);
+  }else{
+    btn(bx,by,108,26,label,active,()=>{
+      if(equipped){
+        equippedToySlots[selectedToySlot]=null;
+        syncEquippedToyLabel();
+        toast("Toy unequipped from Slot "+(selectedToySlot+1));
+        draw();
+        return;
+      }
+      if(equippedElsewhere){
+        equippedToySlots[equippedIndex]=null;
+        syncEquippedToyLabel();
+        toast("Toy unequipped from Slot "+(equippedIndex+1));
+        draw();
+        return;
+      }
+      if(owned){
+        equippedToySlots[selectedToySlot]=toy.name;
+        syncEquippedToyLabel();
+        toast("Toy equipped to Slot "+(selectedToySlot+1));
+        draw();
+        return;
+      }
+      if(toy.kind==="coin" && coins>=toy.cost){
+        coins-=toy.cost;
+        ownedToys[toy.name]=true;
+        equippedToySlots[selectedToySlot]=toy.name;
+        syncEquippedToyLabel();
+        toast("Toy bought and equipped");
+        draw();
+        return;
+      }
+      if(toy.kind==="passCoin"){
+        if(!premiumOwned){modal="passBuy";draw();return}
+        if(coins>=toy.cost){
+          coins-=toy.cost;
+          ownedToys[toy.name]=true;
+          equippedToySlots[selectedToySlot]=toy.name;
+          syncEquippedToyLabel();
+          toast("Purchase equipped");
+          draw();
+          return;
+        }
+      }
+      if(toy.kind==="premiumTrack"){
+        if(!premiumOwned){modal="passBuy";draw();return}
+        ownedToys[toy.name]=true;
+        equippedToySlots[selectedToySlot]=toy.name;
+        syncEquippedToyLabel();
+        toast("Premium reward equipped");
+        draw();
+        return;
+      }
+      if(toy.kind==="freeTrack" && passLevel>=3){
+        ownedToys[toy.name]=true;
+        equippedToySlots[selectedToySlot]=toy.name;
+        syncEquippedToyLabel();
+        toast("Free-track toy claimed");
+        draw();
+        return;
+      }
+      if(toy.kind==="robux"){toast("Robux purchase placeholder");return}
+    },null,true);
+  }
+}
+function drawMyTable(){
+  pagePanel("MY TABLE","");
+
+  grad(205,148,380,382,18,"#101225","#070916",tablePlaced?C.gold2:C.purple2,1.8,true);
+  txt("NATERUSH'S TABLE",235,178,16,C.white,true,"left","middle",225);
+  smallStatus(235,195,112,`LVL ${lvl} TABLE`,tablePlaced?"ready":"muted");
+  smallStatus(355,195,122,tablePlaced?"PLACED":"NOT PLACED",tablePlaced?"ready":"locked");
+
+  box(235,222,320,160,16,"#120a24",C.purple2,1.2);
+  box(294,303,202,44,12,tablePlaced?"#241632":"#21152e",tablePlaced?C.gold2:C.purple2,2,true);
+  box(323,274,144,40,12,"#151834",C.purple,1.4);
+  crown(372,246,.42);
+  txt(tablePlaced?"TABLE READY":"PLACE TABLE",395,325,17,tablePlaced?C.gold:C.white,true,"center","middle",210);
+  txt(tablePlaced?"Ready to host games":"Required before hosting",395,347,8.5,C.muted,true,"center","middle",230);
+
+  if(typeof syncEquippedToyLabel === "function") syncEquippedToyLabel();
+  txt("CURRENT LOADOUT",235,405,11,C.muted,true,"left","middle",160);
+  pill(235,423,98,26,"Skin: Neon");
+  pill(345,423,98,26,`Toy: ${equippedToy==="None"?"None":equippedToy}`);
+  pill(455,423,78,26,"FX: None");
+
+  btn(235,478,142,34,tablePlaced?"REPOSITION":"PLACE TABLE",true,()=>{
+    tablePlaced=true;
+    toast("Table placed. Collision check simulated.");
+    draw();
+  },null,true);
+  btn(392,478,142,34,"HOST GAME",tablePlaced,()=>{
+    if(!tablePlaced){toast("Place your table first");return}
+    modal="hostSettings";draw();
+  },null,true);
+
+  txt("TABLE LOADOUT",620,158,13,C.muted,true,"left","middle",160);
+  tableTabButton(620,178,154,"CUSTOMIZE","custom");
+  tableTabButton(786,178,122,"TOYS","toys");
+  tableTabButton(920,178,130,"PASS","perks");
+
+  // All 3 right-side tabs now copy the Toy Slots unlocked-card structure:
+  // same shell, title/subtitle spacing, 3 stacked rows, and 2 bottom buttons.
+  const cardX=620, cardY=226, cardW=430, cardH=296;
+  const rowX=650, rowW=360;
+  const rowY1=296, rowY2=356, rowY3=416;
+  const buttonY=482;
+  grad(cardX,cardY,cardW,cardH,14,"#101225","#070916",C.gold2,1.5,true);
+
+  if(myTableTab==="custom"){
+    txt("Customize Table",650,250,20,C.white,true,"left","middle",270);
+    txt("Equip style rewards. Items come from tracks, shop, and events.",650,274,10,C.muted,false,"left","middle",350);
+
+    toySlotRow(rowX,rowY1,rowW,"Table Skin","Equipped: Purple Royal","EQUIPPED",false,()=>{modal="customize";draw()});
+    toySlotRow(rowX,rowY2,rowW,"Win Intro","Equipped: Starter Glow","EQUIPPED",false,()=>{modal="customize";draw()});
+    toySlotRow(rowX,rowY3,rowW,"FX Slot",lvl<4?"Unlocks after more table progress":"Empty FX slot",lvl<4?"LVL 4 SLOT":"EMPTY",lvl<4,()=>{modal="customize";draw()});
+
+    btn(650,buttonY,170,28,"EDIT LOADOUT",true,()=>{modal="customize";draw()},null,true);
+    btn(840,buttonY,170,28,"PASS REWARDS",false,()=>{page="pass";draw()},null,true);
+  }
+
+  if(myTableTab==="toys"){
+    txt(lvl>=2?"Toy Slots":"Toy Slots Locked",650,250,20,lvl>=2?C.white:C.muted,true,"left","middle",270);
+    txt("Each slot equips one different toy. No duplicate equips.",650,274,10,C.muted,false,"left","middle",350);
+
+    if(lvl<2){
+      slimHint(650,316,360,"TOY SLOT 1 UNLOCKS AT LEVEL 2");
+      toySlotRow(650,374,360,"Reward Source","Toys come from rewards and shop purchases","INFO",false,null,"INFO");
+      btn(650,buttonY,170,28,"SIM +500 XP",false,()=>{grantXP(500);toast("+500 XP");draw()},null,true);
+      btn(840,buttonY,170,28,"OPEN PASS",false,()=>{page="pass";draw()},null,true);
+    }else{
+      toySlotRow(rowX,rowY1,rowW,"Toy Slot 1",toySlotValue(0),toySlotStatus(0),false,()=>selectToySlot(0));
+      toySlotRow(rowX,rowY2,rowW,"Toy Slot 2",lvl<5?"Unlocks after more table progress":toySlotValue(1),lvl<5?"LVL 5 SLOT":toySlotStatus(1),lvl<5,()=>selectToySlot(1));
+      toySlotRow(rowX,rowY3,rowW,"Toy Slot 3",!premiumOwned?"Signature slot for Arcade Pass owners":toySlotValue(2),!premiumOwned?"PASS SLOT":toySlotStatus(2),!premiumOwned,()=>selectToySlot(2),premiumOwned?null:"GET PASS");
+      btn(650,buttonY,170,28,"BROWSE TOYS",true,()=>selectBrowseToySlot(),null,true);
+      btn(840,buttonY,170,28,"PASS REWARDS",false,()=>{page="pass";draw()},null,true);
+    }
+  }
+
+  if(myTableTab==="perks"){
+    txt("Arcade Pass Perks",650,250,20,C.gold,true,"left","middle",290);
+    txt("Premium perks for stronger rewards and more table expression.",650,274,10,C.muted,false,"left","middle",350);
+
+    toySlotRow(rowX,rowY1,rowW,"6-Hour Ticket",premiumOwned?"Claim a bonus ticket every 6 hours":"Unlock bonus ticket claims with Arcade Pass",premiumOwned&&!passTicketClaimed?"CLAIM":"PASS LOCK",!premiumOwned,()=>{modal="passTicket";draw()},premiumOwned&&!passTicketClaimed?"CLAIM":"PASS LOCK");
+    toySlotRow(rowX,rowY2,rowW,"Win Bonus",premiumOwned?"Premium end-round win rewards":"Scales with your win streak after each win",premiumOwned?"VIEW":"PASS LOCK",!premiumOwned,()=>{modal="streak";draw()},premiumOwned?"VIEW":"PASS LOCK");
+    toySlotRow(rowX,rowY3,rowW,"Signature Slot",premiumOwned?"Toy Slot 3 and rare item rewards":"Rare table item slot for pass owners",premiumOwned?"VIEW":"PASS LOCK",!premiumOwned,()=>{modal=premiumOwned?"toyBrowser":"passBuy";toyScroll=0;draw()},premiumOwned?"VIEW":"PASS LOCK");
+
+    btn(650,buttonY,170,28,premiumOwned?"PASS OWNED":"GET PASS",true,()=>{if(!premiumOwned){modal="passBuy";draw()}},null,true);
+    btn(840,buttonY,170,28,"OPEN PASS",false,()=>{page="pass";draw()},null,true);
+  }
+}
+function drawJoinModal(){
+  ctx.fillStyle="rgba(0,0,0,.58)";
+  ctx.fillRect(0,0,REF_W,REF_H);
+  hit("MODAL_LAYER_BLOCKER",0,0,REF_W,REF_H,()=>{});
+
+  const mx=170,my=70,mw=910,mh=520;
+  grad(mx,my,mw,mh,18,"#11142d","#070917",C.purple,2.6,true);
+  btn(mx+mw-54,my+20,36,36,"X",false,()=>{modal=null;draw()},null,true);
+  crown(mx+340,my+28,.8);
+  txt("JOIN TABLE",mx+455,my+52,32,C.white,true);
+  txt("Quickplay entry confirmation",mx+455,my+84,13,C.muted,true);
+
+  // Left selected game card
+  grad(mx+35,my+90,285,350,14,"#111025","#070916",selectedGame.stroke,2,true);
+  box(mx+60,my+118,235,135,12,"#120a24",C.purple2,1.2);
+  gameIcon(selectedGame.icon,mx+178,my+185);
+  txt(selectedGame.title,mx+178,my+286,30,C.white,true,"center","middle",240);
+  pill(mx+113,my+320,130,28,"QUICKPLAY",C.white,C.purple2);
+  txt(selectedGame.players,mx+178,my+365,16,C.muted,true);
+  box(mx+68,my+392,220,42,10,"#090b19",C.purple2,1.2);
+  coin(mx+112,my+413,15);
+  txt(`${selectedGame.cost} COINS`,mx+155,my+413,20,C.gold,true,"left");
+
+  // Right compact info block
+  grad(mx+345,my+100,525,290,14,"#101225","#070916",C.purple2,1.2);
+  txt("CURRENT TABLE",mx+370,my+126,13,C.muted,true,"left");
+  for(let i=0;i<4;i++){
+    let x=mx+400+i*72,y=my+168;
+    ctx.beginPath();ctx.arc(x,y,27,0,Math.PI*2);
+    ctx.strokeStyle=i<3?C.gold2:C.purple2;ctx.lineWidth=2;ctx.stroke();
+    txt(i<3?["23","18","15"][i]:"+",x,y+1,16,i<3?C.white:C.purple2,true);
+  }
+  txt("3 / 4",mx+785,my+160,27,C.gold,true);
+  txt("PLAYERS JOINED",mx+785,my+188,12,C.muted,true);
+
+  line(mx+370,my+218,mx+845,my+218);
+  txt("ENTRY METHOD",mx+370,my+244,13,C.muted,true,"left");
+  btn(mx+370,my+264,170,42,`${selectedGame.cost} COINS`,true,null,"coin");
+  btn(mx+555,my+264,145,42,"1 TICKET",false,null,"ticket");
+
+  grad(mx+720,my+244,120,86,12,"#150f25","#090b18",C.purple2,1.1);
+  txt("PRIZE POOL",mx+780,my+262,10,C.muted,true);
+  coin(mx+750,my+294,14);
+  txt(String(selectedGame.cost*4),mx+777,my+294,23,C.gold,true,"left");
+  txt("COINS",mx+778,my+316,11,C.gold,true,"left");
+
+  txt("PAYOUT BREAKDOWN",mx+370,my+348,13,C.muted,true,"left");
+  [["1ST",420],["2ND",220],["3RD",100],["4TH",60]].forEach((p,i)=>{
+    let x=mx+370+i*115,y=my+365;
+    box(x,y,100,34,8,"#0b0d1d",i===0?C.gold2:C.purple2,i===0?1.8:1);
+    txt(p[0],x+23,y+17,11,i===0?C.gold:C.muted,true);
+    coin(x+56,y+17,7);
+    txt(String(p[1]),x+70,y+17,11,C.white,true,"left");
+  });
+
+  // Main actions, filled and aligned
+  btn(mx+35,my+455,285,48,"JOIN TABLE",true,()=>{modal="results";draw()},"gamepad");
+  btn(mx+345,my+455,210,48,"SPECTATE",false,()=>toast("Spectating is free"),"eye");
+  btn(mx+575,my+455,295,48,"CLOSE",false,()=>{modal=null;draw()});
+}
+function drawResults(){
+  ctx.fillStyle="rgba(0,0,0,.62)";
+  ctx.fillRect(0,0,REF_W,REF_H);
+  hit("MODAL_LAYER_BLOCKER",0,0,REF_W,REF_H,()=>{});
+
+  const mx=155,my=58,mw=940,mh=500;
+  grad(mx,my,mw,mh,18,"#11142d","#070917",C.purple,2.6,true);
+  btn(mx+mw-55,my+18,38,38,"X",false,()=>{modal=null;draw()},null,true);
+  crown(mx+337,my+24,.72);
+  txt("RESULTS",mx+470,my+48,30,C.white,true);
+  txt("Final standings and rewards summary",mx+470,my+78,12,C.muted,true);
+
+  grad(mx+32,my+92,245,170,13,"#101225","#070916",selectedGame.stroke,1.8);
+  gameIcon(selectedGame.icon,mx+155,my+145);
+  txt(selectedGame.title,mx+155,my+200,23,C.white,true,"center","middle",210);
+  pill(mx+100,my+228,110,24,"QUICKPLAY",C.white,C.purple2);
+  txt("4 PLAYERS",mx+155,my+254,13,C.muted,true);
+
+  grad(mx+32,my+277,245,95,13,"#101225","#070916",C.purple2,1.2);
+  txt("YOU EARNED",mx+55,my+302,13,C.muted,true,"left");
+  coin(mx+67,my+337,15);
+  txt(matchClaimed?"+0":"+420",mx+92,my+333,18,matchClaimed?C.muted:C.gold,true,"left");
+  txt(matchClaimed?"CLAIMED":"COINS",mx+92,my+351,9,matchClaimed?C.green:C.gold,true,"left");
+  starIcon(mx+158,my+338,13,C.purple);
+  txt(matchClaimed?"CLAIMED":"+180 XP",mx+178,my+340,12,matchClaimed?C.green:C.white,true,"left");
+  flame(mx+235,my+338,.68);
+  txt(matchClaimed?"✓":"+1",mx+253,my+333,15,matchClaimed?C.green:C.gold,true,"left");
+  txt("STREAK",mx+253,my+351,8,C.gold,true,"left");
+
+  txt("FINAL STANDINGS",mx+315,my+122,14,C.muted,true,"left");
+  const rows=[["1ST","NateRush","11 pts","+420",C.gold2],["2ND","PixelLuna","9 pts","+220",C.muted],["3RD","InkMilo","7 pts","+100",C.orange],["4TH","VibeNova","4 pts","+60",C.purple]];
+  rows.forEach((r,i)=>{
+    let y=my+142+i*54;
+    box(mx+315,y,430,42,9,"#0b0d1d",r[4],i===0?1.9:1.2);
+    txt(r[0],mx+348,y+21,19,r[4],true);
+    ctx.beginPath();ctx.arc(mx+412,y+21,19,0,Math.PI*2);ctx.strokeStyle=r[4];ctx.lineWidth=2;ctx.stroke();
+    txt(String(1+i),mx+412,y+22,9,C.white,true);
+    txt(r[1],mx+455,y+21,14,C.white,true,"left");
+    txt(r[2],mx+615,y+21,11,C.muted,true,"left");
+    coin(mx+675,y+21,8);
+    txt(r[3],mx+693,y+21,14,C.white,true,"left");
+  });
+
+  grad(mx+765,my+92,145,170,13,"#101225","#070916",C.purple2,1.2);
+  txt("PRIZE POOL",mx+790,my+117,13,C.muted,true,"left");
+  coin(mx+815,my+168,19);
+  txt("800",mx+855,my+166,28,C.gold,true,"left");
+  txt("COINS",mx+855,my+193,12,C.gold,true,"left");
+  line(mx+785,my+220,mx+895,my+220);
+  txt("Entry: 200",mx+790,my+244,10,C.muted,true,"left");
+  txt("Returned: 760",mx+790,my+263,10,C.muted,true,"left");
+
+  grad(mx+315,my+375,270,70,12,"#101225","#070916",C.purple2,1.2);
+  txt("DAILY TASK",mx+340,my+398,12,C.muted,true,"left");
+  txt("Progress starts at 0 in this build",mx+340,my+420,11,C.white,true,"left");
+  box(mx+495,my+416,70,8,4,"#170d27",C.purple2,1);
+  box(mx+497,my+418,0,4,2,C.purple,null,0);
+  txt("0 / 3",mx+573,my+420,12,C.muted,true,"left");
+
+  grad(mx+610,my+375,300,70,12,"#101225","#070916",C.purple2,1.2);
+  txt("ARCADE PASS",mx+635,my+398,12,C.muted,true,"left");
+  txt(matchClaimed?"Claimed":"Result ticket ready after match",mx+635,my+421,12,matchClaimed?C.green:C.white,true,"left");
+  ticketIcon(mx+820,my+410,34,22);
+  btn(mx+785,my+424,100,24,matchClaimed?"CLAIMED":"CLAIM",!matchClaimed,()=>{
+    if(!matchClaimed){matchClaimed=true;tickets++;grantPassXP(120);coins+=420;grantXP(180);streak++;toast("+420 coins, +180 XP, +1 ticket")}
+    draw()
+  },null,true);
+
+  btn(mx+32,my+405,245,42,"REMATCH",true,()=>{modal=null;page="play";matchClaimed=false;draw()},"gamepad");
+  btn(mx+315,my+462,195,34,"LOBBY",false,()=>{modal=null;page="play";draw()},null,true);
+  btn(mx+530,my+462,195,34,"REWARDS",false,()=>{modal=null;page="rewards";draw()},null,true);
+}
+function modalShell(w,h,title,sub,kind){
+  ctx.fillStyle="rgba(0,0,0,.52)";
+  ctx.fillRect(0,0,REF_W,REF_H);
+  // Modal layer blocker: prevents pressing Play/Rewards/My Table buttons through any popup.
+  hit("MODAL_LAYER_BLOCKER",0,0,REF_W,REF_H,()=>{});
+  const x=(REF_W-w)/2, y=(REF_H-h)/2;
+  grad(x,y,w,h,18,"#11142d","#070917",C.purple,2.5,true);
+  btn(x+w-50,y+18,34,34,"X",false,()=>{modal=null;draw()},null,true);
+
+  if(kind==="coin") coin(x+45,y+48,18);
+  else if(kind==="ticket") ticketIcon(x+45,y+48,40,26);
+  else if(kind==="level") starIcon(x+45,y+48,18,C.gold);
+  else if(kind==="streak") flame(x+45,y+48,.9);
+  else if(kind==="pass") crown(x+26,y+28,.62);
+  else if(kind==="task") drawIcon("gamepad",x+45,y+48,18,C.gold);
+  else if(kind==="gift") drawIcon("gift",x+45,y+48,18,C.gold);
+
+  txt(title,x+(kind?78:34),y+44,22,C.white,true,"left","middle",w-(kind?140:95));
+  if(sub) txt(sub,x+(kind?78:34),y+72,14,C.gold,true,"left","middle",w-(kind?140:95));
+  return {x,y,w,h};
+}
+
+function miniRewardCard(x,y,w,h,icon,title,sub,active=false){
+  grad(x,y,w,h,12,active?"#231731":"#101225","#070916",active?C.gold2:C.purple2,active?2:1.2);
+  if(icon==="coin") coin(x+24,y+28,13);
+  else if(icon==="ticket") ticketIcon(x+24,y+28,30,20);
+  else if(icon==="star") starIcon(x+24,y+28,13,C.gold);
+  else if(icon==="flame") flame(x+24,y+28,.72);
+  else drawIcon(icon,x+24,y+28,16,active?C.gold:C.muted);
+  txt(title,x+48,y+23,12,active?C.gold:C.white,true,"left");
+  txt(sub,x+48,y+44,9,C.muted,false,"left","middle",w-58);
+}
+
+function drawCoinPopup(){
+  const m=modalShell(600,360,"COIN SHOP","Stock up for table entries, private matches, and event pools.","coin");
+  miniRewardCard(m.x+34,m.y+105,165,86,"coin","1,000 Coins","Starter Pack",true);
+  miniRewardCard(m.x+217,m.y+105,165,86,"coin","5,000 Coins","Value Pack");
+  miniRewardCard(m.x+400,m.y+105,165,86,"ticket","Watch Ad","Earn 1 ticket");
+  grad(m.x+34,m.y+210,532,54,12,"#101225","#070916",C.purple2,1.1);
+  txt("Simulator mode: packs update this balance only.",m.x+56,m.y+237,11,C.muted,false,"left","middle",488);
+  btn(m.x+34,m.y+284,165,42,"BUY 1,000",true,()=>{coins+=1000;modal=null;toast("+1,000 coins")});
+  btn(m.x+217,m.y+284,165,42,"BUY 5,000",false,()=>{coins+=5000;modal=null;toast("+5,000 coins")});
+  btn(m.x+400,m.y+284,165,42,"WATCH",false,()=>{modal="ad";draw()});
+}
+
+function drawAdPopup(){
+  const m=modalShell(600,360,"WATCH","Reward: +1 Quickplay Ticket","ticket");
+  miniRewardCard(m.x+34,m.y+105,250,92,"ticket","Quickplay Ticket","Enter starter tables without spending coins.",true);
+  grad(m.x+305,m.y+105,260,92,12,"#101225","#070916",C.purple2,1.1);
+  txt("How it works",m.x+326,m.y+130,13,C.white,true,"left");
+  txt("1. Watch rewarded video",m.x+326,m.y+155,11,C.muted,true,"left");
+  txt("2. Ticket is added instantly",m.x+326,m.y+177,11,C.muted,true,"left");
+  grad(m.x+34,m.y+215,532,48,12,"#0b0d1d","#070916",C.purple2,1);
+  txt("Earn tickets for free entries.",m.x+56,m.y+239,11,C.muted,false,"left","middle",480);
+  btn(m.x+34,m.y+284,250,42,"WATCH",true,()=>{tickets++;modal=null;toast("+1 ticket")});
+  btn(m.x+305,m.y+284,150,42,"CLOSE",false,()=>{modal=null;draw()});
+}
+
+function drawLevelPopup(){
+  const m=modalShell(640,400,"PLAYER LEVEL",`Level ${lvl}`,"level");
+  grad(m.x+34,m.y+104,572,82,12,"#101225","#070916",C.purple2,1.1);
+  starIcon(m.x+78,m.y+145,24,C.gold);
+  txt("Progress to next level",m.x+122,m.y+128,13,C.white,true,"left","middle",240);
+  box(m.x+122,m.y+150,390,14,7,"#170d27",C.purple2,1);
+  box(m.x+124,m.y+152,Math.min(390,390*xp/xpMax),10,5,C.blue,null,0);
+  txt(`${xp.toLocaleString()} / ${xpMax.toLocaleString()} XP`,m.x+535,m.y+157,11,C.white,true,"right","middle",110);
+
+  txt("Table slot unlocks",m.x+34,m.y+214,13,C.muted,true,"left","middle",200);
+  loadoutRow(m.x+34,m.y+236,572,"Level 2","Toy slot opens. Toy items still come from rewards.","TOYS",lvl<2);
+  loadoutRow(m.x+34,m.y+296,572,"Level 4","Table FX slot opens. FX items come from reward tracks.","FX SLOT",lvl<4);
+
+  btn(m.x+34,m.y+358,150,32,"GOT IT",true,()=>{modal=null;draw()},null,true);
+  btn(m.x+205,m.y+358,165,32,"SIM +500 XP",false,()=>{grantXP(500);toast("+500 XP");draw()},null,true);
+  btn(m.x+390,m.y+358,165,32,"SIM LEVEL 4",false,()=>{while(lvl<4){grantXP(xpMax)}toast("Level 4 unlocked");draw()},null,true);
+}
+function drawStreakPopup(){
+  const cap=10;
+  const m=modalShell(700,420,"WIN STREAK",premiumOwned?`Current streak: ${streak} wins • Premium bonus active`:"Arcade Pass unlocks Win Bonus","streak");
+  grad(m.x+34,m.y+105,632,78,12,premiumOwned?"#101225":"#231731","#070916",premiumOwned?C.purple2:C.gold2,premiumOwned?1.1:1.8);
+  flame(m.x+68,m.y+144,.9);
+  txt(premiumOwned?"Premium Win Bonus is active.":"Turn wins into extra rewards with Arcade Pass.",m.x+105,m.y+132,15,premiumOwned?C.white:C.gold,true,"left","middle",480);
+  txt("Every win grows your end-of-round bonus until it reaches the cap.",m.x+105,m.y+158,11,C.muted,false,"left","middle",495);
+
+  txt("Premium bonus ladder",m.x+34,m.y+218,13,C.muted,true,"left","middle",180);
+  for(let i=1;i<=10;i++){
+    let x=m.x+34+(i-1)*62, y=m.y+240;
+    let active=premiumOwned && i<=Math.min(streak,cap);
+    box(x,y,52,54,8,active?"rgba(54,37,20,1)":"#0b0d1d",active?C.gold2:C.purple2,active?1.8:1);
+    txt(String(i),x+26,y+15,12,active?C.gold:C.muted,true);
+    txt("+"+(i*20),x+26,y+33,9,active?C.green:C.muted,true);
+    if(i===cap)txt("CAP",x+26,y+45,7,C.gold,true);
+  }
+
+  if(!premiumOwned){
+    grad(m.x+34,m.y+312,632,42,10,"#0d1022","#070916",C.purple2,1.1);
+    txt("Arcade Pass also includes Bonus Drops, 6-hour tickets, Season Quests, and premium table FX.",m.x+56,m.y+333,10,C.muted,false,"left","middle",580);
+    btn(m.x+34,m.y+366,190,34,"GET PASS",true,()=>{modal="passBuy";draw()},null,true);
+    btn(m.x+244,m.y+366,155,34,"OPEN PASS",false,()=>{modal=null;page="pass";draw()},null,true);
+  }else{
+    btn(m.x+34,m.y+366,155,34,"GOT IT",true,()=>{modal=null;draw()},null,true);
+  }
+}
+function drawDailyRewardsPopup(){
+  const m=modalShell(650,395,"DAILY DROP",dailyClaimed?"Already claimed today":"Free login reward","gift");
+  txt("Daily Drops are login rewards. Win Bonus is earned after victories.",m.x+34,m.y+102,12,C.muted,false,"left");
+  for(let i=1;i<=7;i++){
+    let x=m.x+34+(i-1)*84,y=m.y+135;
+    let active=i===4, claimed=i<4 || (i===4 && dailyClaimed);
+    box(x,y,70,98,10,active?"rgba(54,37,20,1)":"#0b0d1d",active?C.gold2:C.purple2,active?2:1);
+    txt("DAY "+i,x+35,y+18,10,active?C.gold:C.muted,true);
+    if(i%2===0) ticketIcon(x+35,y+48,28,18); else coin(x+35,y+48,13);
+    txt(i===4 && !dailyClaimed?"CLAIM":claimed?"✓":"LOCK",x+35,y+80,9,claimed?C.green:active?C.gold:C.muted,true);
+  }
+  grad(m.x+34,m.y+258,582,54,12,"#101225","#070916",C.purple2,1.1);
+  txt("Arcade Pass owners unlock a Bonus Drop.",m.x+56,m.y+285,11,C.muted,false,"left","middle",530);
+  btn(m.x+34,m.y+330,190,42,dailyClaimed?"CLAIMED":"CLAIM",!dailyClaimed,()=>{if(!dailyClaimed){dailyClaimed=true;coins+=100;grantXP(40);toast("+100 coins, +40 XP")}draw()});
+  btn(m.x+245,m.y+330,170,42,"PASS",false,()=>{modal=null;page="pass";draw()});
+}
+
+function drawPremiumDailyPopup(){
+  const m=modalShell(650,395,"BONUS DROP",premiumOwned?"Bonus claim ready":"Arcade Pass required","pass");
+  grad(m.x+34,m.y+105,582,80,14,"#231731","#070916",premiumOwned?C.gold2:C.purple2,premiumOwned?2:1.2);
+  crown(m.x+58,m.y+124,.75);
+  txt(premiumOwned?"Premium bonus active":"Get Arcade Pass to unlock Bonus Drops",m.x+118,m.y+132,15,premiumOwned?C.gold:C.white,true,"left");
+  txt("Extra coins, tickets, and Pass XP on top of the free Daily Drop.",m.x+118,m.y+158,11,C.muted,false,"left");
+  for(let i=1;i<=5;i++){
+    let x=m.x+52+(i-1)*108,y=m.y+210;
+    box(x,y,86,72,10,i===1?"rgba(54,37,20,1)":"#0b0d1d",i===1?C.gold2:C.purple2,i===1?2:1);
+    if(i===1) ticketIcon(x+43,y+30,30,20); else coin(x+43,y+30,13);
+    txt(i===1?"TODAY":"BONUS",x+43,y+58,9,i===1?C.gold:C.muted,true);
+  }
+  btn(m.x+34,m.y+320,210,42,premiumOwned?(premiumDailyClaimed?"CLAIMED":"CLAIM"):"GET PASS",premiumOwned && !premiumDailyClaimed,()=>{
+    if(!premiumOwned){modal="passBuy";draw();return}
+    if(!premiumDailyClaimed){premiumDailyClaimed=true;tickets++;grantPassXP(80);toast("+1 ticket, +80 Pass XP")}
+    draw()
+  });
+  btn(m.x+265,m.y+320,160,42,"PASS",false,()=>{modal=null;page="pass";draw()});
+}
+
+function drawTaskPopup(){
+  const isWeekly=activeTaskPanel==="weekly";
+  const isSeason=activeTaskPanel==="season";
+  const title=isSeason?"SEASON QUESTS":isWeekly?"WEEKLY GOALS":"DAILY GOALS";
+  const sub=isSeason?"Arcade Pass owners can claim season task rewards.":isWeekly?"Bigger weekly goals with better payouts.":"Small daily goals for quick progress.";
+  const m=modalShell(670,440,title,sub,isSeason?"pass":"task");
+
+  if(isSeason && !premiumOwned){
+    grad(m.x+34,m.y+96,602,64,12,"#231731","#070916",C.gold2,1.6);
+    crown(m.x+58,m.y+112,.55);
+    txt("Arcade Pass owner benefit",m.x+110,m.y+120,14,C.gold,true,"left");
+    txt("You can make progress now, but claiming season task rewards requires Arcade Pass ownership.",m.x+110,m.y+143,10,C.muted,false,"left","middle",480);
+  }
+
+  // Zero-progress simulation everywhere.
+  const taskList=isWeekly?
+    [["Win 15 Matches",0,15,900,"coin"],["Host 5 Tables",0,5,650,"table"],["Earn 5,000 Coins",0,5000,800,"coin"]]:
+    isSeason?
+    [["Play 50 Matches",0,50,1200,"gamepad"],["Win 20 Matches",0,20,1500,"medal"],["Claim 10 Dailies",0,10,1000,"gift"]]:
+    [["Play 10 Matches",0,10,250,"gamepad"],["Win 3 Matches",0,3,300,"medal"],["Use 5 Toys",0,5,200,"gift"]];
+
+  const startY=isSeason&&!premiumOwned?175:112;
+  taskList.forEach((t,i)=>{
+    let y=m.y+startY+i*70;
+    grad(m.x+34,y,602,58,12,"#101225","#070916",C.purple2,1.1);
+    drawIcon(t[4],m.x+65,y+29,16,i===1?C.gold:C.muted);
+    txt(t[0],m.x+94,y+20,14,C.white,true,"left");
+    box(m.x+94,y+36,270,10,5,"#170d27",C.purple2,1);
+    box(m.x+96,y+38,0,6,3,C.gold,null,0);
+    txt(`${t[1]} / ${t[2]}`,m.x+382,y+41,12,C.muted,true,"left");
+    txt(`XP ${t[3]}`,m.x+455,y+29,12,C.gold,true,"left");
+    const canClaim=false;
+    btn(m.x+540,y+15,76,28,isSeason&&!premiumOwned?"LOCK":"GO",false,()=>{
+      if(isSeason&&!premiumOwned){modal="passBuy";draw();return}
+      modal=null;page="play";toast("Progress starts at 0 — play to complete")
+    },null,true);
+  });
+
+  if(isSeason){
+    btn(m.x+34,m.y+386,190,34,premiumOwned?"PASS OWNED":"GET PASS",!premiumOwned,()=>{if(!premiumOwned){modal="passBuy";draw()}else{modal=null;page="pass";draw()}},null,true);
+  } else {
+    btn(m.x+34,m.y+386,170,34,"PLAY",true,()=>{modal=null;page="play";draw()},null,true);
+  }
+  btn(m.x+225,m.y+386,170,34,"PASS",false,()=>{modal=null;page="pass";draw()},null,true);
+}
+function drawPassBuyPopup(){
+  const m=modalShell(700,420,"ARCADE PASS","Season 1: Neon Nights premium upgrade","pass");
+
+  txt("Upgrade for premium reward flow and cosmetic flex without changing core fairness.",m.x+34,m.y+98,11,C.muted,false,"left","middle",610);
+
+  grad(m.x+34,m.y+126,632,116,14,"#101225","#070916",C.purple2,1.2);
+  txt("Pass owner perks",m.x+58,m.y+153,15,C.white,true,"left","middle",210);
+  perkRow(m.x+58,m.y+176,180,"6-Hour Ticket","Extra entries","PERK",false,()=>{},false);
+  perkRow(m.x+260,m.y+176,180,"Table FX","Cosmetics","PERK",false,()=>{},false);
+  perkRow(m.x+462,m.y+176,180,"Win Bonus","Premium streak","PERK",false,()=>{},false);
+
+  grad(m.x+34,m.y+262,292,86,12,"#0d1022","#070916",C.purple2,1.1);
+  txt("Free Track",m.x+58,m.y+288,16,C.muted,true,"left","middle",170);
+  txt("Coins, tickets, and starter rewards stay free.",m.x+58,m.y+318,10.5,C.muted,false,"left","middle",225);
+
+  grad(m.x+374,m.y+262,292,86,12,"#231731","#070916",C.gold2,1.9,true);
+  txt("Premium Track",m.x+398,m.y+288,16,C.gold,true,"left","middle",180);
+  txt("Bonus Drops, cosmetics, Season Quests, and Win Bonus.",m.x+398,m.y+318,10.5,C.white,false,"left","middle",225);
+
+  btn(m.x+34,m.y+366,210,40,premiumOwned?"PASS OWNED":"GET PASS",!premiumOwned,()=>{premiumOwned=true;toast("Arcade Pass active");draw()},null,false);
+  btn(m.x+266,m.y+366,180,40,"VIEW TRACK",false,()=>{modal=null;page="pass";draw()},null,false);
+  btn(m.x+468,m.y+366,180,40,"CLOSE",false,()=>{modal=null;draw()},null,false);
+}
+function drawToysPopup(){
+  const m=modalShell(640,410,"TOY SLOTS",lvl<2?"Toy Slot 1 unlocks at Level 2":"Pick a slot to equip one unique toy.","gift");
+  txt("Each toy can only be equipped once. Add more toys by unlocking more slots.",m.x+34,m.y+100,11,C.muted,false,"left","middle",560);
+
+  if(lvl<2){
+    slimHint(m.x+34,m.y+142,572,"TOY SLOT 1 UNLOCKS AT LEVEL 2");
+    toySlotRow(m.x+34,m.y+205,572,"Reward Source","Toy items come from rewards and shop purchases","INFO",false,null,"INFO");
+    btn(m.x+34,m.y+332,170,34,"SIM +500 XP",false,()=>{grantXP(500);toast("+500 XP");draw()},null,true);
+    btn(m.x+225,m.y+332,170,34,"OPEN PASS",false,()=>{modal=null;page="pass";draw()},null,true);
+    return;
+  }
+
+  toySlotRow(m.x+34,m.y+132,572,"Toy Slot 1",toySlotValue(0),toySlotStatus(0),false,()=>selectToySlot(0));
+  toySlotRow(m.x+34,m.y+200,572,"Toy Slot 2",lvl<5?"Unlocks after more table progress":toySlotValue(1),lvl<5?"LVL 5 SLOT":toySlotStatus(1),lvl<5,()=>selectToySlot(1));
+  toySlotRow(m.x+34,m.y+268,572,"Toy Slot 3",!premiumOwned?"Signature slot for Arcade Pass owners":toySlotValue(2),!premiumOwned?"PASS SLOT":toySlotStatus(2),!premiumOwned,()=>selectToySlot(2),premiumOwned?null:"GET PASS");
+
+  btn(m.x+34,m.y+348,170,34,"BROWSE TOYS",true,()=>selectBrowseToySlot(),null,true);
+  btn(m.x+225,m.y+348,170,34,"PASS REWARDS",false,()=>{modal=null;page="pass";draw()},null,true);
+}
+function drawSimpleModal(){
+  if(modal==="coins") return drawCoinPopup();
+  if(modal==="ad") return drawAdPopup();
+  if(modal==="level") return drawLevelPopup();
+  if(modal==="streak") return drawStreakPopup();
+  if(modal==="passBuy") return drawPassBuyPopup();
+  if(modal==="tasks") return drawTaskPopup();
+  if(modal==="dailyRewards") return drawDailyRewardsPopup();
+  if(modal==="premiumDaily") return drawPremiumDailyPopup();
+  if(modal==="passTicket") return drawPassTicketPopup();
+  if(modal==="hostSettings") return drawHostSettingsPopup();
+  if(modal==="customize") return drawCustomizePopup();
+  if(modal==="toys") return drawToysPopup();
+  if(modal==="toyBrowser") return drawToyBrowserPopup();
+  if(modal==="upgrades") return drawUpgradesPopup();
+}
+
+function stepper(x,y,value,min,max,onMinus,onPlus){
+  const canMinus=value>min, canPlus=value<max;
+  if(canMinus) btn(x,y,42,36,"-",false,onMinus,null,true); else disabledBtn(x,y,42,36,"-",null,true);
+  box(x+50,y,64,36,8,"#090b19",C.purple2,1);
+  txt(String(value),x+82,y+18,13,C.white,true,"center","middle",48);
+  if(canPlus) btn(x+122,y,42,36,"+",false,onPlus,null,true); else disabledBtn(x+122,y,42,36,"+",null,true);
+}
+function entryStepper(x,y,value,onMinus,onPlus){
+  const canMinus=value>100;
+  if(canMinus) btn(x,y,42,36,"-",false,onMinus,null,true); else disabledBtn(x,y,42,36,"-",null,true);
+  box(x+50,y,92,36,8,"#090b19",C.purple2,1);
+  coin(x+70,y+18,9);
+  txt(String(value),x+92,y+18,13,C.white,true,"left","middle",44);
+  btn(x+150,y,42,36,"+",false,onPlus,null,true);
+}
+
+function drawHostSettingsPopup(){
+  const m=modalShell(900,520,"HOST GAME","Choose the game, access, entry, and mode.","gamepad");
+  const hg=games.find(g=>g.id===selectedHostGame)||games[3];
+  const nums=(hg.players.match(/\d+/g)||["2","4"]).map(Number);
+  const minP=nums[0]||2, maxP=nums[1]||4;
+  host.players=Math.max(minP,Math.min(maxP,host.players));
+  if(host.entry<100)host.entry=100;
+
+  grad(m.x+34,m.y+98,252,250,16,"#101225","#070916",hg.stroke,1.8,true);
+  box(m.x+64,m.y+128,192,92,12,"#120a24",C.purple2,1.1);
+  gameIcon(hg.icon,m.x+160,m.y+174);
+  txt(hg.title,m.x+160,m.y+245,20,C.white,true,"center","middle",210);
+  txt(`${minP} - ${maxP} Players`,m.x+160,m.y+273,12,C.muted,true,"center","middle",180);
+  box(m.x+82,m.y+302,156,32,9,"#090b19",C.purple2,1);
+  coin(m.x+114,m.y+318,10);
+  txt(`${host.entry} entry`,m.x+138,m.y+318,12,C.gold,true,"left","middle",86);
+
+  txt("BASE GAME",m.x+315,m.y+104,12,C.muted,true,"left","middle",110);
+  btn(m.x+315,m.y+120,250,40,hg.title,false,()=>{gameDropdown=!gameDropdown;hostModeDropdown=false;draw()},null,true);
+  txt("⌄",m.x+545,m.y+140,16,C.muted,true);
+
+  txt("GAME MODE",m.x+590,m.y+104,12,C.muted,true,"left","middle",115);
+  const simonOnly=selectedHostGame==="simon";
+  btn(m.x+590,m.y+120,230,40,simonOnly?host.mode:"Standard",simonOnly,()=>{if(simonOnly){hostModeDropdown=!hostModeDropdown;gameDropdown=false;draw()}},null,true);
+  txt(simonOnly?"⌄":"LOCK",m.x+795,m.y+140,12,simonOnly?C.muted:C.purple2,true);
+
+  txt("ACCESS",m.x+315,m.y+198,12,C.muted,true,"left","middle",100);
+  ["Public","Friends","Invite Code"].forEach((a,i)=>btn(m.x+315+i*145,m.y+215,136,38,a,host.access===a,()=>{host.access=a;draw()},null,true));
+
+  txt("JOIN CODE",m.x+315,m.y+275,12,C.muted,true,"left","middle",110);
+  box(m.x+315,m.y+292,250,36,8,"#090b19",C.purple2,1);
+  txt("Q7NP",m.x+333,m.y+310,16,C.white,false,"left","middle",90);
+  btn(m.x+580,m.y+292,125,36,"NEW CODE",false,()=>toast("New code"),null,true);
+
+  txt("PLAYERS",m.x+315,m.y+356,12,C.muted,true,"left","middle",82);
+  smallStatus(m.x+385,m.y+345,55,"FREE","ready");
+  stepper(m.x+315,m.y+373,host.players,minP,maxP,()=>{host.players=Math.max(minP,host.players-1);draw()},()=>{host.players=Math.min(maxP,host.players+1);draw()});
+
+  txt("ENTRY FEE",m.x+520,m.y+356,12,C.muted,true,"left","middle",100);
+  entryStepper(m.x+520,m.y+373,host.entry,()=>{host.entry=Math.max(100,host.entry-100);draw()},()=>{host.entry+=100;draw()});
+
+  grad(m.x+735,m.y+292,120,116,12,"#101225","#070916",C.purple2,1.1);
+  txt("PRIZE POOL",m.x+795,m.y+318,12,C.muted,true,"center","middle",104);
+  coin(m.x+770,m.y+360,13);
+  txt(String(host.entry*host.players),m.x+797,m.y+360,22,C.gold,true,"left","middle",70);
+  txt("COINS",m.x+797,m.y+384,11,C.gold,true,"left","middle",70);
+
+  btn(m.x+34,m.y+455,250,42,tablePlaced?"OPEN TABLE":"PLACE FIRST",tablePlaced,()=>{if(!tablePlaced){modal=null;page="mytable";toast("Place your table first");draw();return}modal=null;toast(`Hosting ${hg.title}`)},"gamepad");
+  btn(m.x+315,m.y+455,190,42,"MY TABLE",false,()=>{modal=null;page="mytable";draw()},null,true);
+  btn(m.x+525,m.y+455,190,42,"CLOSE",false,()=>{modal=null;draw()},null,true);
+
+  if(gameDropdown || hostModeDropdown){hit("HOST_DROPDOWN_LAYER_BLOCKER",m.x,m.y,m.w,m.h,()=>{gameDropdown=false;hostModeDropdown=false;draw()})}
+  if(gameDropdown){
+    const dx=m.x+315,dy=m.y+164,dw=250,dh=185;hit("HOST_GAME_DROPDOWN_BODY",dx,dy,dw,dh,()=>{});grad(dx,dy,dw,dh,10,"#0d1022","#070916",C.gold2,1.8,true);
+    games.forEach((g,i)=>{let y=m.y+174+i*34;box(m.x+326,y,228,28,7,g.id===selectedHostGame?"rgba(54,37,20,1)":"#0b0d1d",g.id===selectedHostGame?C.gold2:C.purple2,g.id===selectedHostGame?1.5:1);gameIcon(g.icon,m.x+343,y+14);txt(g.title,m.x+364,y+14,10,g.id===selectedHostGame?C.gold:C.white,true,"left","middle",158);txt(String(g.cost),m.x+540,y+14,9,C.muted,true,"right","middle",36);hit("hostGameChoice"+g.id,m.x+326,y,228,28,()=>{selectedHostGame=g.id;host.entry=Math.max(100,g.cost);host.players=(g.players.match(/\d+/g)||[2]).map(Number)[0]||2;gameDropdown=false;if(g.id!=="simon")host.mode="Standard";draw()})})
+  }
+  if(hostModeDropdown && simonOnly){
+    const dx=m.x+590,dy=m.y+164,dw=230,dh=112;hit("HOST_MODE_DROPDOWN_BODY",dx,dy,dw,dh,()=>{});grad(dx,dy,dw,dh,10,"#0d1022","#070916",C.gold2,1.8,true);
+    ["Normal","Dash","Memory Rush"].forEach((mode,i)=>{let y=m.y+174+i*34;box(m.x+600,y,210,28,7,host.mode===mode?"rgba(54,37,20,1)":"#0b0d1d",host.mode===mode?C.gold2:C.purple2,host.mode===mode?1.5:1);txt(mode,m.x+616,y+14,10,host.mode===mode?C.gold:C.white,true,"left","middle",180);hit("hostMode"+mode,m.x+600,y,210,28,()=>{host.mode=mode;hostModeDropdown=false;draw()})})
+  }
+}
+function drawPassTicketPopup(){
+  const m=modalShell(600,350,"6-HOUR TICKET CLAIM",premiumOwned?"Arcade Pass owner benefit":"Arcade Pass owners only","ticket");
+  miniRewardCard(m.x+34,m.y+105,250,92,"ticket","+1 Quickplay Ticket","Available every 6 hours when you get on.",premiumOwned&&!passTicketClaimed);
+  grad(m.x+305,m.y+105,260,92,12,"#101225","#070916",C.purple2,1.1);
+  txt("Status",m.x+326,m.y+130,13,C.white,true,"left");
+  txt(premiumOwned?(passTicketClaimed?"Already claimed this cycle":"Ready to claim now"):"Arcade Pass required",m.x+326,m.y+155,11,premiumOwned&&!passTicketClaimed?C.gold:C.muted,true,"left");
+  txt("Next claim timer goes here.",m.x+326,m.y+177,11,C.muted,true,"left");
+  btn(m.x+34,m.y+260,230,42,premiumOwned?(passTicketClaimed?"CLAIMED":"CLAIM TICKET"):"GET PASS",premiumOwned&&!passTicketClaimed,()=>{
+    if(!premiumOwned){modal="passBuy";draw();return}
+    if(!passTicketClaimed){passTicketClaimed=true;tickets++;toast("+1 pass owner ticket")}
+    draw()
+  });
+  btn(m.x+286,m.y+260,150,42,"PASS",false,()=>{modal=null;page="pass";draw()});
+}
+
+function drawCustomizePopup(){
+  const m=modalShell(650,420,"CUSTOMIZE TABLE","Slots unlock by level. Items come from rewards.","table");
+  txt("Choose your equipped look. Level opens slots; rewards provide the items.",m.x+34,m.y+100,11,C.muted,false,"left","middle",580);
+
+  loadoutSafeRow(m.x+34,m.y+132,582,"Table Skin","Purple Royal","EQUIPPED",false);
+  loadoutSafeRow(m.x+34,m.y+188,582,"Win Intro","Starter Glow","FREE TRACK",false);
+  loadoutSafeRow(m.x+34,m.y+244,582,"Table FX Slot","No FX item equipped","LVL 4 SLOT",lvl<4);
+  loadoutSafeRow(m.x+34,m.y+300,582,"Host Badge Slot","No badge item equipped","LVL 6 SLOT",lvl<6);
+
+  btn(m.x+34,m.y+368,170,34,"SAVE",true,()=>{modal=null;toast("Loadout saved")},null,true);
+  btn(m.x+225,m.y+368,170,34,"OPEN PASS",false,()=>{modal=null;page="pass";draw()},null,true);
+  btn(m.x+416,m.y+368,170,34,"CLOSE",false,()=>{modal=null;draw()},null,true);
+}
+function drawUpgradesPopup(){
+  const m=modalShell(700,430,"CUSTOMIZATION SLOTS","Level opens slots. Rewards unlock items.","medal");
+  txt("Player count is always free. Level progression only opens places to equip rewards.",m.x+34,m.y+102,11,C.muted,false,"left","middle",620);
+  const rows=[
+    ["Toy Slot","Equip your first toy","Level 2","gift"],
+    ["Upgrade Slot","Use advanced table cosmetics","Level 3","medal"],
+    ["Table FX Slot","Equip table lighting or glow","Level 4","star"],
+    ["Host Badge Slot","Show a premium host badge","Level 6","table"]
+  ];
+  rows.forEach((r,i)=>{
+    let y=m.y+135+i*58;
+    let req=parseInt(r[2].split(" ")[1]);
+    let unlocked=lvl>=req;
+    grad(m.x+34,y,632,46,10,unlocked?"#101225":"#090b17","#070916",unlocked?C.gold2:"#5e438b",unlocked?1.5:1.1);
+    drawIcon(r[3],m.x+62,y+23,16,unlocked?C.gold:C.purple2);
+    txt(r[0],m.x+95,y+17,13,unlocked?C.white:C.muted,true,"left","middle",180);
+    txt(r[1],m.x+95,y+35,9,C.muted,false,"left","middle",285);
+    txt(unlocked?"SLOT OPEN":r[2],m.x+480,y+23,10,unlocked?C.green:C.gold,true,"left","middle",90);
+    if(unlocked) btn(m.x+575,y+9,70,28,"VIEW",false,()=>{modal="customize";draw()},null,true);
+    else disabledBtn(m.x+575,y+9,70,28,"LOCKED",null,true);
+  });
+  btn(m.x+34,m.y+382,150,34,"SIM +500 XP",false,()=>{grantXP(500);toast("+500 XP");draw()},null,true);
+  btn(m.x+205,m.y+382,160,34,"CUSTOMIZE",true,()=>{modal="customize";draw()},null,true);
+  btn(m.x+386,m.y+382,150,34,"CLOSE",false,()=>{modal=null;draw()},null,true);
+}
+
+function drawToyBrowserPopup(){
+  const m=modalShell(640,500,"TOY CABINET",`Choose a toy for Slot ${selectedToySlot+1}`,"gift");
+  txt("Coins, rewards, Robux, and Arcade Pass items. One toy can only fill one slot.",m.x+34,m.y+100,10.5,C.muted,false,"left","middle",560);
+
+  const viewX=m.x+34, viewY=m.y+126, viewW=572, viewH=292;
+  box(viewX,viewY,viewW,viewH,12,"#090b17",C.purple2,1);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(viewX+8,viewY+8,viewW-16,viewH-16);
+  ctx.clip();
+
+  const cardW=532, cardH=86, gapY=14;
+  const contentH=toyCatalog.length*(cardH+gapY)-gapY+16;
+  const maxScroll=Math.max(0,contentH-(viewH-16));
+  toyScroll=Math.max(0,Math.min(maxScroll,toyScroll));
+
+  toyCatalog.forEach((toy,i)=>{
+    const x=viewX+18;
+    const y=viewY+16+i*(cardH+gapY)-toyScroll;
+    if(y+cardH<viewY+8 || y>viewY+viewH-8)return;
+    toyCard(x,y,cardW,cardH,toy);
+  });
+
+  ctx.restore();
+
+  if(maxScroll>0){
+    const barX=viewX+viewW-12, barY=viewY+14, barH=viewH-28;
+    box(barX,barY,4,barH,3,"#1b1130",null,0);
+    const thumbH=Math.max(34,barH*(barH/(contentH+18)));
+    const thumbY=barY+(barH-thumbH)*(toyScroll/maxScroll);
+    box(barX-1,thumbY,6,thumbH,3,C.gold,null,0);
+  }
+
+  btn(m.x+34,m.y+434,150,34,"TOY SLOTS",false,()=>{modal="toys";draw()},null,true);
+  btn(m.x+204,m.y+434,150,34,"OPEN PASS",false,()=>{modal=null;page="pass";draw()},null,true);
+  btn(m.x+374,m.y+434,150,34,"CLOSE",false,()=>{modal=null;draw()},null,true);
+}
+function drawModal(){if(!modal)return;if(modal==="join"){drawJoinModal();return}if(modal==="results"){drawResults();return}if(modal==="hostGame"){drawHostSettingsPopup();return}drawSimpleModal()}
+function drawToast(){if(!toastText||performance.now()>toastUntil)return;grad(455,585,340,34,9,"#0d1022","#070916",C.purple2,1.3,true);txt(toastText,625,602,12,C.white,true);requestAnimationFrame(draw)}
+function toast(s){toastText=s;toastUntil=performance.now()+1800;draw()}
+function draw(){hitboxes=[];ref(()=>{background();topBar();if(page==="play")drawPlay();else if(page==="rewards")drawRewards();else if(page==="pass")drawPass();else if(page==="mytable")drawMyTable();else txt("No page open",625,310,28,C.muted,true);bottomNav();drawModal();drawToast()})}
+canvas.addEventListener("mousedown",e=>{let p=toRef(e.clientX,e.clientY);for(let i=hitboxes.length-1;i>=0;i--){let h=hitboxes[i];if(p.x>=h.x&&p.x<=h.x+h.w&&p.y>=h.y&&p.y<=h.y+h.h){h.fn();return}}if(searchFocused){searchFocused=false;draw()}});
+canvas.addEventListener("wheel",e=>{
+  if(modal==="toyBrowser"){
+    e.preventDefault();
+    toyScroll=Math.max(0,toyScroll+e.deltaY);
+    draw();
+  }
+},{passive:false});
+window.addEventListener("keydown",e=>{if(e.ctrlKey&&e.key.toLowerCase()==="p"){e.preventDefault();download();return}if(e.key==="1")setMode("ref");if(e.key==="2")setMode("1080");if(searchFocused){if(e.key==="Backspace"){searchText=searchText.slice(0,-1);e.preventDefault();draw()}else if(e.key==="Escape"||e.key==="Enter"){searchFocused=false;draw()}else if(e.key.length===1&&!e.ctrlKey&&!e.metaKey){searchText+=e.key;draw()}}});
+function download(){let a=document.createElement("a");a.download=`TableDash_UI_v37_${page||"none"}_${new Date().toISOString().replace(/[:.]/g,"-")}.png`;a.href=canvas.toDataURL("image/png");a.click()}
+setMode("ref");
+</script>
+</body>
+</html>
